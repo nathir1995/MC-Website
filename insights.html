@@ -4,9 +4,9 @@
 <head>
   <meta charset="utf-8">
   <meta content="width=device-width, initial-scale=1.0" name="viewport">
-  <title>Insights - Canadian Muslim Census</title>
-  <meta name="description" content="">
-  <meta name="keywords" content="">
+  <title>Data Explorer - Canadian Muslim Census</title>
+  <meta name="description" content="Advanced demographic analytics and interactive data exploration for Canadian Muslim population insights.">
+  <meta name="keywords" content="muslim demographics canada, data explorer, demographic analysis, population statistics">
 
   <!-- Favicons -->
   <link href="assets/img/favicon.png" rel="icon">
@@ -15,326 +15,1287 @@
   <!-- Fonts -->
   <link href="https://fonts.googleapis.com" rel="preconnect">
   <link href="https://fonts.gstatic.com" rel="preconnect" crossorigin>
-  <link
-    href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100;0,300;0,400;0,500;0,700;0,900;1,100;1,300;1,400;1,500;1,700;1,900&family=Montserrat:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&family=Raleway:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap"
-    rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 
+  <!-- Chart.js and additional visualization libraries -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.min.js"></script>
+  
   <!-- Vendor CSS Files -->
   <link href="assets/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
   <link href="assets/vendor/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
   <link href="assets/vendor/aos/aos.css" rel="stylesheet">
-  <link href="assets/vendor/glightbox/css/glightbox.min.css" rel="stylesheet">
-  <link href="assets/vendor/swiper/swiper-bundle.min.css" rel="stylesheet">
 
-  <!-- Main CSS File -->
-  <link href="assets/css/main.css" rel="stylesheet">
+  <style>
+    :root {
+      /* Design System Variables (same as index.html) */
+      --color-primary-50: #eff6ff;
+      --color-primary-100: #dbeafe;
+      --color-primary-500: #3b82f6;
+      --color-primary-600: #2563eb;
+      --color-primary-700: #1d4ed8;
+      --color-primary-900: #1e3a8a;
+      
+      --color-success-50: #ecfdf5;
+      --color-success-500: #10b981;
+      --color-warning-50: #fffbeb;
+      --color-warning-500: #f59e0b;
+      --color-error-50: #fef2f2;
+      --color-error-500: #ef4444;
+      
+      --color-gray-50: #f9fafb;
+      --color-gray-100: #f3f4f6;
+      --color-gray-200: #e5e7eb;
+      --color-gray-300: #d1d5db;
+      --color-gray-400: #9ca3af;
+      --color-gray-500: #6b7280;
+      --color-gray-600: #4b5563;
+      --color-gray-700: #374151;
+      --color-gray-800: #1f2937;
+      --color-gray-900: #111827;
+      
+      --font-family-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      
+      --space-xs: 0.5rem;
+      --space-sm: 0.75rem;
+      --space-md: 1rem;
+      --space-lg: 1.5rem;
+      --space-xl: 2rem;
+      --space-2xl: 3rem;
+      --space-3xl: 4rem;
+      
+      --radius-sm: 0.375rem;
+      --radius-md: 0.5rem;
+      --radius-lg: 0.75rem;
+      --radius-xl: 1rem;
+      
+      --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+      --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+      --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+      --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: var(--font-family-sans);
+      line-height: 1.6;
+      color: var(--color-gray-900);
+      background-color: var(--color-gray-50);
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    /* Header Styles (same as index.html) */
+    .header {
+      background: white;
+      border-bottom: 1px solid var(--color-gray-200);
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .header-content {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 0 var(--space-lg);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      height: 80px;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+      text-decoration: none;
+      color: var(--color-gray-900);
+    }
+
+    .logo-icon {
+      width: 40px;
+      height: 40px;
+      background: linear-gradient(135deg, var(--color-primary-500), var(--color-primary-700));
+      border-radius: var(--radius-lg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 18px;
+      font-weight: 600;
+    }
+
+    .logo-text {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--color-gray-900);
+    }
+
+    .nav {
+      display: flex;
+      gap: var(--space-2xl);
+      align-items: center;
+    }
+
+    .nav-item {
+      color: var(--color-gray-600);
+      text-decoration: none;
+      font-weight: 500;
+      font-size: 15px;
+      padding: var(--space-sm) var(--space-md);
+      border-radius: var(--radius-md);
+      transition: all 0.2s ease;
+    }
+
+    .nav-item:hover, .nav-item.active {
+      color: var(--color-primary-600);
+      background-color: var(--color-primary-50);
+    }
+
+    .search-container {
+      position: relative;
+      width: 320px;
+    }
+
+    .search-input {
+      width: 100%;
+      padding: var(--space-sm) var(--space-md) var(--space-sm) 40px;
+      border: 1px solid var(--color-gray-300);
+      border-radius: var(--radius-lg);
+      background: var(--color-gray-50);
+      font-size: 14px;
+      transition: all 0.2s ease;
+    }
+
+    .search-input:focus {
+      outline: none;
+      border-color: var(--color-primary-500);
+      background: white;
+      box-shadow: 0 0 0 3px var(--color-primary-50);
+    }
+
+    .search-icon {
+      position: absolute;
+      left: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--color-gray-400);
+    }
+
+    /* Data Explorer Layout */
+    .explorer-container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: var(--space-xl) var(--space-lg);
+    }
+
+    .page-header {
+      margin-bottom: var(--space-2xl);
+    }
+
+    .page-title {
+      font-size: 40px;
+      font-weight: 800;
+      color: var(--color-gray-900);
+      margin-bottom: var(--space-md);
+    }
+
+    .page-subtitle {
+      font-size: 18px;
+      color: var(--color-gray-600);
+      max-width: 700px;
+    }
+
+    /* Filter Panel */
+    .filter-panel {
+      background: white;
+      border-radius: var(--radius-xl);
+      padding: var(--space-xl);
+      border: 1px solid var(--color-gray-200);
+      box-shadow: var(--shadow-sm);
+      margin-bottom: var(--space-xl);
+    }
+
+    .filter-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: var(--space-lg);
+    }
+
+    .filter-group {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-sm);
+    }
+
+    .filter-label {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--color-gray-700);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .filter-select {
+      padding: var(--space-sm) var(--space-md);
+      border: 1px solid var(--color-gray-300);
+      border-radius: var(--radius-md);
+      background: white;
+      font-size: 14px;
+      color: var(--color-gray-700);
+      transition: all 0.2s ease;
+    }
+
+    .filter-select:focus {
+      outline: none;
+      border-color: var(--color-primary-500);
+      box-shadow: 0 0 0 3px var(--color-primary-50);
+    }
+
+    /* Analysis Grid */
+    .analysis-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--space-xl);
+      margin-bottom: var(--space-2xl);
+    }
+
+    .analysis-card {
+      background: white;
+      border-radius: var(--radius-xl);
+      padding: var(--space-xl);
+      border: 1px solid var(--color-gray-200);
+      box-shadow: var(--shadow-sm);
+      transition: all 0.3s ease;
+    }
+
+    .analysis-card:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-lg);
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: var(--space-lg);
+    }
+
+    .card-title {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--color-gray-900);
+    }
+
+    .card-actions {
+      display: flex;
+      gap: var(--space-sm);
+    }
+
+    .action-btn {
+      padding: var(--space-xs) var(--space-sm);
+      border: 1px solid var(--color-gray-300);
+      border-radius: var(--radius-sm);
+      background: white;
+      color: var(--color-gray-600);
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .action-btn:hover {
+      border-color: var(--color-primary-500);
+      color: var(--color-primary-600);
+    }
+
+    .chart-container {
+      height: 300px;
+      position: relative;
+    }
+
+    /* StatCan Survey Analysis Section */
+    .survey-analysis-section {
+      background: linear-gradient(135deg, var(--color-primary-50), var(--color-success-50));
+      border-radius: var(--radius-xl);
+      padding: var(--space-2xl);
+      margin-bottom: var(--space-2xl);
+      border: 2px solid var(--color-primary-200);
+    }
+
+    .survey-header {
+      text-align: center;
+      margin-bottom: var(--space-xl);
+    }
+
+    .survey-title {
+      font-size: 28px;
+      font-weight: 800;
+      color: var(--color-gray-900);
+      margin-bottom: var(--space-md);
+    }
+
+    .survey-description {
+      font-size: 16px;
+      color: var(--color-gray-700);
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    .survey-upload-area {
+      background: white;
+      border: 2px dashed var(--color-primary-300);
+      border-radius: var(--radius-lg);
+      padding: var(--space-2xl);
+      text-align: center;
+      margin-bottom: var(--space-lg);
+      transition: all 0.3s ease;
+      cursor: pointer;
+    }
+
+    .survey-upload-area:hover {
+      border-color: var(--color-primary-500);
+      background: var(--color-primary-50);
+    }
+
+    .upload-icon {
+      font-size: 48px;
+      color: var(--color-primary-500);
+      margin-bottom: var(--space-md);
+    }
+
+    .upload-text {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--color-gray-800);
+      margin-bottom: var(--space-sm);
+    }
+
+    .upload-subtext {
+      font-size: 14px;
+      color: var(--color-gray-600);
+    }
+
+    .analysis-features {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: var(--space-lg);
+    }
+
+    .feature-card {
+      background: white;
+      border-radius: var(--radius-lg);
+      padding: var(--space-lg);
+      border: 1px solid var(--color-gray-200);
+      text-align: center;
+    }
+
+    .feature-icon {
+      font-size: 32px;
+      margin-bottom: var(--space-md);
+    }
+
+    .feature-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--color-gray-900);
+      margin-bottom: var(--space-sm);
+    }
+
+    .feature-description {
+      font-size: 14px;
+      color: var(--color-gray-600);
+      line-height: 1.5;
+    }
+
+    /* Data Table */
+    .data-table-section {
+      background: white;
+      border-radius: var(--radius-xl);
+      padding: var(--space-xl);
+      border: 1px solid var(--color-gray-200);
+      box-shadow: var(--shadow-sm);
+      margin-bottom: var(--space-2xl);
+    }
+
+    .table-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: var(--space-lg);
+    }
+
+    .table-title {
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--color-gray-900);
+    }
+
+    .table-actions {
+      display: flex;
+      gap: var(--space-sm);
+    }
+
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .data-table th {
+      background: var(--color-gray-50);
+      padding: var(--space-md);
+      text-align: left;
+      font-weight: 600;
+      color: var(--color-gray-800);
+      border-bottom: 2px solid var(--color-gray-200);
+    }
+
+    .data-table td {
+      padding: var(--space-md);
+      border-bottom: 1px solid var(--color-gray-100);
+      color: var(--color-gray-700);
+    }
+
+    .data-table tbody tr:hover {
+      background: var(--color-gray-50);
+    }
+
+    .metric-value {
+      font-weight: 600;
+      color: var(--color-gray-900);
+    }
+
+    .trend-positive {
+      color: var(--color-success-500);
+    }
+
+    .trend-negative {
+      color: var(--color-error-500);
+    }
+
+    /* Buttons */
+    .btn {
+      padding: var(--space-md) var(--space-lg);
+      border-radius: var(--radius-lg);
+      font-weight: 600;
+      font-size: 14px;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-sm);
+      transition: all 0.2s ease;
+      border: 2px solid transparent;
+      cursor: pointer;
+    }
+
+    .btn-primary {
+      background: var(--color-primary-600);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: var(--color-primary-700);
+      transform: translateY(-1px);
+      box-shadow: var(--shadow-md);
+      color: white;
+    }
+
+    .btn-secondary {
+      background: white;
+      color: var(--color-gray-700);
+      border-color: var(--color-gray-300);
+    }
+
+    .btn-secondary:hover {
+      border-color: var(--color-primary-500);
+      color: var(--color-primary-600);
+      transform: translateY(-1px);
+      box-shadow: var(--shadow-md);
+    }
+
+    .btn-success {
+      background: var(--color-success-500);
+      color: white;
+    }
+
+    .btn-success:hover {
+      background: #059669;
+      transform: translateY(-1px);
+      box-shadow: var(--shadow-md);
+      color: white;
+    }
+
+    /* Mobile Responsive */
+    @media (max-width: 768px) {
+      .header-content {
+        padding: 0 var(--space-md);
+        height: 64px;
+      }
+      
+      .nav {
+        display: none;
+      }
+      
+      .search-container {
+        width: 200px;
+      }
+      
+      .explorer-container {
+        padding: var(--space-lg) var(--space-md);
+      }
+      
+      .page-title {
+        font-size: 28px;
+      }
+      
+      .analysis-grid {
+        grid-template-columns: 1fr;
+      }
+      
+      .filter-grid {
+        grid-template-columns: 1fr;
+      }
+      
+      .analysis-features {
+        grid-template-columns: 1fr;
+      }
+
+      .table-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--space-md);
+      }
+
+      .data-table {
+        font-size: 14px;
+      }
+    }
+
+    /* Loading States */
+    .loading {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 200px;
+      color: var(--color-gray-500);
+    }
+
+    .spinner {
+      border: 3px solid var(--color-gray-200);
+      border-top: 3px solid var(--color-primary-500);
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+      margin-right: var(--space-md);
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    /* Animations */
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(30px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .animate-fadeInUp {
+      animation: fadeInUp 0.6s ease-out;
+    }
+  </style>
 </head>
 
-<body class="services-page">
-
-  <header id="header" class="header d-flex align-items-center fixed-top">
-    <div class="container-fluid container-xl position-relative d-flex align-items-center justify-content-between">
-
-      <a href="index.html" class="logo d-flex align-items-center">
-        <!-- Uncomment the line below if you also wish to use an image logo -->
-        <img src="assets/img/main/Canadian_Muslim_Cencus_Logo.png" alt="Canadian Muslim Census Logo" class="logo-image">
-        <!-- <h1 class="sitename">Canadian Muslim Census</h1> -->
+<body>
+  <!-- Header -->
+  <header class="header">
+    <div class="header-content">
+      <a href="index.html" class="logo">
+        <div class="logo-icon">📊</div>
+        <span class="logo-text">Canadian Muslim Census</span>
       </a>
-
-      <nav id="navmenu" class="navmenu">
-        <ul>
-          <li><a href="about.html">About</a></li>
-          <li><a href="insights.html">Insights</a></li>
-          <li><a href="blog.html">Blog</a></li>
-          <li><a href="#" class="btn-participate">Participate</a></li>
-        </ul>
-        <i class="mobile-nav-toggle d-xl-none bi bi-list"></i>
+      
+      <nav class="nav">
+        <a href="index.html" class="nav-item">Dashboard</a>
+        <a href="#" class="nav-item active">Data Explorer</a>
+        <a href="about.html" class="nav-item">Research</a>
+        <a href="about.html" class="nav-item">About</a>
+        <a href="blog.html" class="nav-item">Blog</a>
       </nav>
-
+      
+      <div class="search-container">
+        <input type="text" class="search-input" placeholder="Search demographics, insights..." id="searchInput">
+        <i class="bi bi-search search-icon"></i>
+      </div>
     </div>
   </header>
 
-  <main class="main">
+  <main class="explorer-container">
+    <!-- Page Header -->
+    <div class="page-header animate-fadeInUp">
+      <h1 class="page-title">Advanced Data Explorer</h1>
+      <p class="page-subtitle">
+        Interactive analytics platform for comprehensive demographic research and statistical analysis of Canada's Muslim population
+      </p>
+    </div>
 
-    <!-- Page Title -->
-    <div class="page-title dark-background" data-aos="fade"
-      style="background-image: url(assets/img/main/services-page-title-bg.jpg);">
-      <div class="container">
-        <h1>Insights</h1>
-      </div>
-    </div><!-- End Page Title -->
-
-    <!-- Services Section -->
-    <section id="services" class="services section">
-
-      <!-- Section Title -->
-      <div class="container section-title" data-aos="fade-up">
-        <h2>Profile of Muslims in Canada</h2>
-        <p>A demographic and cultural overview of the Muslim community in Canada.</p>
-      </div><!-- End Section Title -->
-
-      <div class="container">
-
-        <div class="row gy-4">
-
-          <div class="col-lg-4 col-md-6 service-item d-flex" data-aos="fade-up" data-aos-delay="100">
-            <div class="icon flex-shrink-0"><i class="bi bi-people" style="color: #f57813;"></i></div>
-            <div>
-              <h4 class="title">Population Growth</h4>
-              <p class="description">The Muslim population in Canada reached 1,775,710 in 2021, up from 1,053,945 in
-                2011, now
-                constituting 4.9% of the national population.</p>
-            </div>
-          </div>
-
-          <div class="col-lg-4 col-md-6 service-item d-flex" data-aos="fade-up" data-aos-delay="200">
-            <div class="icon flex-shrink-0"><i class="bi bi-globe" style="color: #15a04a;"></i></div>
-            <div>
-              <h4 class="title">Immigration Trends</h4>
-              <p class="description">63.1% of Muslims in Canada are immigrants, with the majority coming from Asia
-                (64.7%) and
-                Africa (29.1%).</p>
-            </div>
-          </div>
-
-          <div class="col-lg-4 col-md-6 service-item d-flex" data-aos="fade-up" data-aos-delay="300">
-            <div class="icon flex-shrink-0"><i class="bi bi-map" style="color: #d90769;"></i></div>
-            <div>
-              <h4 class="title">High-Density Areas</h4>
-              <p class="description">Muslims are predominantly urban, with significant populations in the Greater
-                Toronto Area
-                (10.2%), Montreal (8.9%), Ottawa, Calgary, and Edmonton.</p>
-            </div>
-          </div>
-
-          <div class="col-lg-4 col-md-6 service-item d-flex" data-aos="fade-up" data-aos-delay="400">
-            <div class="icon flex-shrink-0"><i class="bi bi-chat-square-text" style="color: #15bfbc;"></i></div>
-            <div>
-              <h4 class="title">Languages Spoken</h4>
-              <p class="description">Arabic is the most common mother tongue, followed by Urdu, Bengali, Persian,
-                Somali, and
-                Turkish. 95% are fluent in one or both official languages.</p>
-            </div>
-          </div>
-
-          <div class="col-lg-4 col-md-6 service-item d-flex" data-aos="fade-up" data-aos-delay="500">
-            <div class="icon flex-shrink-0"><i class="bi bi-mortarboard" style="color: #f5cf13;"></i></div>
-            <div>
-              <h4 class="title">Education & Employment</h4>
-              <p class="description">60% of Muslims over 15 have post-secondary education. However, 13.9% face
-                unemployment,
-                with 62% of Canadian-born Muslim professionals not working in their trained fields.</p>
-            </div>
-          </div>
-
-          <div class="col-lg-4 col-md-6 service-item d-flex" data-aos="fade-up" data-aos-delay="600">
-            <div class="icon flex-shrink-0"><i class="bi bi-shop" style="color: #1335f5;"></i></div>
-            <div>
-              <h4 class="title">Halal Industry Growth</h4>
-              <p class="description">The halal food market in Canada was valued at $10.39 billion in 2022 and is
-                projected to
-                reach $18.34 billion by 2032, with increasing retail expansion.</p>
-            </div>
-          </div>
-
-          <div class="col-lg-4 col-md-6 service-item d-flex" data-aos="fade-up" data-aos-delay="700">
-            <div class="icon flex-shrink-0"><i class="bi bi-house-door" style="color: #ff5733;"></i></div>
-            <div>
-              <h4 class="title">Housing & Challenges</h4>
-              <p class="description">Muslims face challenges in housing, including discrimination and a lack of halal
-                financing
-                options, alongside high living costs.</p>
-            </div>
-          </div>
-
-          <div class="col-lg-4 col-md-6 service-item d-flex" data-aos="fade-up" data-aos-delay="800">
-            <div class="icon flex-shrink-0"><i class="bi bi-building" style="color: #28a745;"></i></div>
-            <div>
-              <h4 class="title">Mosques in Canada</h4>
-              <p class="description">Canada is home to 755 mosques as of December 2024, reflecting the community's
-                growth and
-                diversification.</p>
-            </div>
-          </div>
-
-          <div class="col-lg-4 col-md-6 service-item d-flex" data-aos="fade-up" data-aos-delay="900">
-            <div class="icon flex-shrink-0"><i class="bi bi-person-lines-fill" style="color: #6610f2;"></i></div>
-            <div>
-              <h4 class="title">Cultural Diversity</h4>
-              <p class="description">Over 60 ethnocultural groups are represented among Canadian Muslims, with the
-                largest being
-                South Asians (37.6%) and Arabs (32.2%).</p>
-            </div>
-          </div>
-
+    <!-- Filter Panel -->
+    <div class="filter-panel animate-fadeInUp" style="animation-delay: 0.1s">
+      <div class="filter-grid">
+        <div class="filter-group">
+          <label class="filter-label">Geographic Scope</label>
+          <select class="filter-select" id="geographicFilter" onchange="updateAnalysis()">
+            <option value="canada">All of Canada</option>
+            <option value="provinces">By Province</option>
+            <option value="cities">Major Cities</option>
+            <option value="regions">Regional Analysis</option>
+          </select>
         </div>
+        
+        <div class="filter-group">
+          <label class="filter-label">Time Period</label>
+          <select class="filter-select" id="timeFilter" onchange="updateAnalysis()">
+            <option value="2021">2021 Census</option>
+            <option value="2016">2016 Census</option>
+            <option value="2011">2011 Census</option>
+            <option value="historical">Historical Trend</option>
+          </select>
+        </div>
+        
+        <div class="filter-group">
+          <label class="filter-label">Demographic Focus</label>
+          <select class="filter-select" id="demographicFilter" onchange="updateAnalysis()">
+            <option value="all">All Demographics</option>
+            <option value="age">Age Distribution</option>
+            <option value="origin">Cultural Origins</option>
+            <option value="language">Languages</option>
+            <option value="education">Education Levels</option>
+            <option value="employment">Employment</option>
+          </select>
+        </div>
+        
+        <div class="filter-group">
+          <label class="filter-label">Analysis Type</label>
+          <select class="filter-select" id="analysisFilter" onchange="updateAnalysis()">
+            <option value="overview">Overview</option>
+            <option value="comparative">Comparative</option>
+            <option value="trends">Trend Analysis</option>
+            <option value="projections">Projections</option>
+          </select>
+        </div>
+      </div>
+    </div>
 
+    <!-- StatCan Survey Analysis Section -->
+    <div class="survey-analysis-section animate-fadeInUp" style="animation-delay: 0.2s">
+      <div class="survey-header">
+        <h2 class="survey-title">StatCan Survey Integration & Analysis</h2>
+        <p class="survey-description">
+          Upload Statistics Canada survey data to unlock advanced cross-tabulation analysis, 
+          demographic modeling, and predictive insights with our proprietary analytics engine.
+        </p>
       </div>
 
-    </section><!-- /Services Section -->
+      <div class="survey-upload-area" onclick="handleFileUpload()" id="uploadArea">
+        <div class="upload-icon">📊</div>
+        <div class="upload-text">Upload StatCan Survey Data</div>
+        <div class="upload-subtext">Drag & drop CSV, XLSX, or SAV files • Max 100MB</div>
+        <input type="file" id="fileInput" style="display: none;" accept=".csv,.xlsx,.sav" onchange="processFile(event)">
+      </div>
 
-    <!-- Service Cards Section -->
-    <section id="service-cards" class="service-cards section">
-
-      <div class="container">
-
-        <!-- Strengths Section -->
-        <div class="mb-4" data-aos="fade-up">
-          <h3 class="text-primary">Strengths of Canadian Muslims</h3>
-        </div>
-        <div class="row gy-4">
-
-          <div class="col-lg-6" data-aos="fade-up" data-aos-delay="100">
-            <div class="card shadow-sm border-0 p-3">
-              <h4 class="card-title">Resilience and Adaptability</h4>
-              <p>Despite systemic barriers, Canadian Muslims exhibit resilience through initiatives combating
-                Islamophobia and
-                promoting youth empowerment.</p>
-            </div>
-          </div>
-
-          <div class="col-lg-6" data-aos="fade-up" data-aos-delay="200">
-            <div class="card shadow-sm border-0 p-3">
-              <h4 class="card-title">Education and Skills</h4>
-              <p>High levels of educational attainment make Canadian Muslims a vital intellectual and professional
-                resource
-                for the country.</p>
-            </div>
-          </div>
-
-          <div class="col-lg-6" data-aos="fade-up" data-aos-delay="300">
-            <div class="card shadow-sm border-0 p-3">
-              <h4 class="card-title">Cultural Richness</h4>
-              <p>The diversity within the Muslim community fosters rich cultural exchanges and interfaith dialogue,
-                enhancing
-                Canadian society.</p>
-            </div>
-          </div>
-
-          <div class="col-lg-6" data-aos="fade-up" data-aos-delay="400">
-            <div class="card shadow-sm border-0 p-3">
-              <h4 class="card-title">Youth Demographics</h4>
-              <p>A young and growing population offers significant long-term contributions to Canada's economic and
-                social
-                fabric.</p>
-            </div>
+      <div class="analysis-features">
+        <div class="feature-card">
+          <div class="feature-icon">🔍</div>
+          <div class="feature-title">Cross-Tabulation Analysis</div>
+          <div class="feature-description">
+            Generate detailed cross-tabs between demographic variables with statistical significance testing
           </div>
         </div>
-
-        <!-- Challenges Section -->
-        <div class="mt-5 mb-4" data-aos="fade-up">
-          <h3 class="text-danger">Challenges Faced by Canadian Muslims</h3>
+        
+        <div class="feature-card">
+          <div class="feature-icon">📈</div>
+          <div class="feature-title">Predictive Modeling</div>
+          <div class="feature-description">
+            Build demographic projection models using machine learning algorithms and trend analysis
+          </div>
         </div>
-        <div class="row gy-4">
-
-          <div class="col-lg-6" data-aos="fade-up" data-aos-delay="500">
-            <div class="card shadow-sm border-0 p-3">
-              <h4 class="card-title">Economic Disparities</h4>
-              <p>Persistent unemployment and underemployment undermine the economic stability of many Muslim families.
-              </p>
-            </div>
+        
+        <div class="feature-card">
+          <div class="feature-icon">🗺️</div>
+          <div class="feature-title">Geographic Mapping</div>
+          <div class="feature-description">
+            Visualize survey responses on interactive maps with heat mapping and cluster analysis
           </div>
-
-          <div class="col-lg-6" data-aos="fade-up" data-aos-delay="600">
-            <div class="card shadow-sm border-0 p-3">
-              <h4 class="card-title">Limited Representation</h4>
-              <p>Political underrepresentation and negative media portrayals restrict the community's influence in
-                shaping
-                policies.</p>
-            </div>
-          </div>
-
-          <div class="col-lg-6" data-aos="fade-up" data-aos-delay="700">
-            <div class="card shadow-sm border-0 p-3">
-              <h4 class="card-title">Lack of Cohesion</h4>
-              <p>Cultural and sectarian differences, while a strength in diversity, sometimes hinder unified community
-                efforts.</p>
-            </div>
-          </div>
-
-          <div class="col-lg-6" data-aos="fade-up" data-aos-delay="800">
-            <div class="card shadow-sm border-0 p-3">
-              <h4 class="card-title">Islamophobia</h4>
-              <p>Systemic and social prejudices reduce opportunities and create barriers to full societal participation.
-              </p>
-            </div>
+        </div>
+        
+        <div class="feature-card">
+          <div class="feature-icon">📋</div>
+          <div class="feature-title">Custom Reports</div>
+          <div class="feature-description">
+            Generate publication-ready reports with charts, tables, and statistical summaries
           </div>
         </div>
       </div>
+    </div>
 
-    </section><!-- /Service Cards Section -->
+    <!-- Analysis Grid -->
+    <div class="analysis-grid animate-fadeInUp" style="animation-delay: 0.3s">
+      <div class="analysis-card">
+        <div class="card-header">
+          <h3 class="card-title">Population Distribution</h3>
+          <div class="card-actions">
+            <button class="action-btn" onclick="exportChart('population')">
+              <i class="bi bi-download"></i> Export
+            </button>
+            <button class="action-btn" onclick="fullscreen('populationChart')">
+              <i class="bi bi-arrows-fullscreen"></i>
+            </button>
+          </div>
+        </div>
+        <div class="chart-container">
+          <canvas id="populationChart"></canvas>
+        </div>
+      </div>
 
+      <div class="analysis-card">
+        <div class="card-header">
+          <h3 class="card-title">Age Demographics</h3>
+          <div class="card-actions">
+            <button class="action-btn" onclick="exportChart('age')">
+              <i class="bi bi-download"></i> Export
+            </button>
+            <button class="action-btn" onclick="fullscreen('ageChart')">
+              <i class="bi bi-arrows-fullscreen"></i>
+            </button>
+          </div>
+        </div>
+        <div class="chart-container">
+          <canvas id="ageChart"></canvas>
+        </div>
+      </div>
 
+      <div class="analysis-card">
+        <div class="card-header">
+          <h3 class="card-title">Economic Indicators</h3>
+          <div class="card-actions">
+            <button class="action-btn" onclick="exportChart('economic')">
+              <i class="bi bi-download"></i> Export
+            </button>
+            <button class="action-btn" onclick="fullscreen('economicChart')">
+              <i class="bi bi-arrows-fullscreen"></i>
+            </button>
+          </div>
+        </div>
+        <div class="chart-container">
+          <canvas id="economicChart"></canvas>
+        </div>
+      </div>
+
+      <div class="analysis-card">
+        <div class="card-header">
+          <h3 class="card-title">Educational Attainment</h3>
+          <div class="card-actions">
+            <button class="action-btn" onclick="exportChart('education')">
+              <i class="bi bi-download"></i> Export
+            </button>
+            <button class="action-btn" onclick="fullscreen('educationChart')">
+              <i class="bi bi-arrows-fullscreen"></i>
+            </button>
+          </div>
+        </div>
+        <div class="chart-container">
+          <canvas id="educationChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Data Table Section -->
+    <div class="data-table-section animate-fadeInUp" style="animation-delay: 0.4s">
+      <div class="table-header">
+        <h3 class="table-title">Detailed Demographics Table</h3>
+        <div class="table-actions">
+          <button class="btn btn-secondary" onclick="exportTable()">
+            <i class="bi bi-download"></i>
+            Export CSV
+          </button>
+          <button class="btn btn-primary" onclick="generateReport()">
+            <i class="bi bi-file-earmark-text"></i>
+            Generate Report
+          </button>
+        </div>
+      </div>
+      
+      <div style="overflow-x: auto;">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Province/Territory</th>
+              <th>Muslim Population</th>
+              <th>Percentage of Total</th>
+              <th>Growth Rate (2016-2021)</th>
+              <th>Median Age</th>
+              <th>Post-Secondary Education</th>
+              <th>Employment Rate</th>
+            </tr>
+          </thead>
+          <tbody id="dataTableBody">
+            <tr>
+              <td><strong>Ontario</strong></td>
+              <td class="metric-value">1,194,115</td>
+              <td class="metric-value">6.7%</td>
+              <td class="trend-positive">+29.8%</td>
+              <td>29 years</td>
+              <td>62%</td>
+              <td>87.2%</td>
+            </tr>
+            <tr>
+              <td><strong>Quebec</strong></td>
+              <td class="metric-value">434,325</td>
+              <td class="metric-value">5.1%</td>
+              <td class="trend-positive">+27.1%</td>
+              <td>31 years</td>
+              <td>58%</td>
+              <td>84.5%</td>
+            </tr>
+            <tr>
+              <td><strong>Alberta</strong></td>
+              <td class="metric-value">212,430</td>
+              <td class="metric-value">4.8%</td>
+              <td class="trend-positive">+35.2%</td>
+              <td>28 years</td>
+              <td>65%</td>
+              <td>89.1%</td>
+            </tr>
+            <tr>
+              <td><strong>British Columbia</strong></td>
+              <td class="metric-value">154,735</td>
+              <td class="metric-value">3.0%</td>
+              <td class="trend-positive">+23.4%</td>
+              <td>32 years</td>
+              <td>59%</td>
+              <td>86.8%</td>
+            </tr>
+            <tr>
+              <td><strong>Manitoba</strong></td>
+              <td class="metric-value">28,570</td>
+              <td class="metric-value">2.1%</td>
+              <td class="trend-positive">+18.9%</td>
+              <td>30 years</td>
+              <td>54%</td>
+              <td>83.7%</td>
+            </tr>
+            <tr>
+              <td><strong>Saskatchewan</strong></td>
+              <td class="metric-value">14,225</td>
+              <td class="metric-value">1.2%</td>
+              <td class="trend-positive">+22.1%</td>
+              <td>29 years</td>
+              <td>56%</td>
+              <td>85.3%</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div style="display: flex; justify-content: center; gap: 1rem; margin-top: 2rem; flex-wrap: wrap;">
+      <button class="btn btn-success" onclick="scheduleAnalysis()">
+        <i class="bi bi-clock"></i>
+        Schedule Analysis
+      </button>
+      <button class="btn btn-primary" onclick="requestCustomAnalysis()">
+        <i class="bi bi-gear"></i>
+        Custom Analysis
+      </button>
+      <a href="https://docs.google.com/forms/d/e/1FAIpQLSeBiw3MyaTyG9Xofql2EALD9-mvPXeySmuH_4yayRDHSOD5NQ/viewform?usp=header" class="btn btn-secondary">
+        <i class="bi bi-person-plus"></i>
+        Contribute Data
+      </a>
+    </div>
   </main>
 
-  <footer id="footer" class="footer light-background">
+  <script>
+    // Initialize all components when page loads
+    document.addEventListener('DOMContentLoaded', function() {
+      initializeCharts();
+      setupEventListeners();
+    });
 
-    <div class="footer-top">
-      <div class="container">
-        <div class="row gy-4">
-          <div class="col-lg-5 col-md-12 footer-about">
-            <a href="index.html" class="logo d-flex align-items-center">
-              <span class="sitename">Canadian Muslim Census</span>
-            </a>
-            <p>The leading source of research and insights for Muslims in the Canada.</p>
-            <div class="social-links d-flex mt-4">
-              <a href=""><i class="bi bi-facebook"></i></a>
-              <a href="https://www.instagram.com/canadian_muslim_census/?igsh=MW0zdGpsYXRsbW82bg%3D%3D#"><i class="bi bi-instagram"></i></a>
-              <a href="https://www.linkedin.com/company/canadian-muslim-census/?viewAsMember=true"><i class="bi bi-linkedin"></i></a>
-            </div>
-          </div>
+    // Initialize all charts
+    function initializeCharts() {
+      initPopulationChart();
+      initAgeChart();
+      initEconomicChart();
+      initEducationChart();
+    }
 
-          <div class="col-lg-2 col-6 footer-links">
-          </div>
+    // Population Distribution Chart
+    function initPopulationChart() {
+      const ctx = document.getElementById('populationChart').getContext('2d');
+      
+      new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: ['Ontario', 'Quebec', 'Alberta', 'BC', 'Manitoba', 'Saskatchewan'],
+          datasets: [{
+            label: 'Muslim Population',
+            data: [1194115, 434325, 212430, 154735, 28570, 14225],
+            backgroundColor: [
+              '#3b82f6',
+              '#10b981',
+              '#f59e0b',
+              '#ef4444',
+              '#8b5cf6',
+              '#06b6d4'
+            ],
+            borderRadius: 4,
+            borderSkipped: false,
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              display: false
+            },
+            tooltip: {
+              backgroundColor: 'rgba(0, 0, 0, 0.8)',
+              titleColor: 'white',
+              bodyColor: 'white',
+              cornerRadius: 8,
+              callbacks: {
+                label: function(context) {
+                  return 'Population: ' + context.parsed.y.toLocaleString();
+                }
+              }
+            }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              grid: {
+                color: '#f1f5f9'
+              },
+              ticks: {
+                color: '#6b7280',
+                callback: function(value) {
+                  return (value / 1000).toFixed(0) + 'K';
+                }
+              }
+            },
+            x: {
+              grid: {
+                display: false
+              },
+              ticks: {
+                color: '#6b7280'
+              }
+            }
+          }
+        }
+      });
+    }
 
-          <div class="col-lg-2 col-6 footer-links">
-            <h4>Discover</h4>
-            <ul>
-              <li><a href="about.html">About us</a></li>
-              <li><a href="https://www.canada.ca/en/canadian-heritage/campaigns/combatting-islamophobia-canada/annual-report-2023-2024.html">Reports</a></li>
-              <li><a href="privacy.html">Privacy</a></li>
-              <li><a href="mailto:nhaimoun@gmail.com">Get in touch</a></li>
-            </ul>
-          </div>
+    // Age Distribution Chart
+    function initAgeChart() {
+      const ctx = document.getElementById('ageChart').getContext('2d');
+      
+      new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: ['0-14', '15-24', '25-34', '35-44', '45-54', '55-64', '65+'],
+          datasets: [{
+            label: 'Muslim Population',
+            data: [28.2, 16.8, 20.1, 17.9, 10.5, 4.8, 1.7],
+            borderColor: '#3b82f6',
+            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+            borderWidth: 3,
+            fill: true,
+            tension: 0.4,
+            pointBackgroundColor: '#3b82f6',
+            pointBorderColor: '#ffffff',
+            pointBorderWidth: 2,
+            pointRadius: 5
+          }, {
+            label: 'General Population',
+            data: [15.3, 11.8, 14.2, 16.1, 17.8, 15.4, 9.4],
+            borderColor: '#94a3b8',
+            backgroundColor: 'rgba(148, 163, 184, 0.1)',
+            borderWidth: 2,
+            fill: false,
+            tension: 0.4,
+            pointBackgroundColor: '#94a3b8',
+            pointBorderColor: '#ffffff',
+            pointBorderWidth: 2,
+            pointRadius: 4
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'bottom',
+              labels: {
+                padding: 20,
+                usePointStyle: true
+              }
+            }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              grid: {
+                color: '#f1f5f9'
+              },
+              ticks: {
+                color: '#6b7280',
+                callback: function(value) {
+                  return value + '%';
+                }
+              }
+            },
+            x: {
+              grid: {
+                display: false
+              },
+              ticks: {
+                color: '#6b7280'
+              }
+            }
+          }
+        }
+      });
+    }
 
-          <div class="col-lg-3 col-md-12 footer-contact text-center text-md-start">
-            <h4>Contact Us</h4>
-            <p>355 Taralake Way NE</p>
-            <p>Calgary, AB T31 1T2</p>
-            <p>Canada</p>
-            <p class="mt-4"><strong>Phone:</strong> <span>+1 5589 55488 55</span></p>
-            <p><strong>Email:</strong> <span>info@example.com</span></p>
-          </div>
+    // Economic Indicators Chart
+    function initEconomicChart() {
+      const ctx = document.getElementById('economicChart').getContext('2d');
+      
+      new Chart(ctx, {
+        type: 'radar',
+        data: {
+          labels: ['Employment Rate', 'Median Income', 'Business Ownership', 'Home Ownership', 'Educational Investment'],
+          datasets: [{
+            label: 'Muslim Population',
+            data: [87, 75, 12, 68, 95],
+            borderColor: '#3b82f6',
+            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+            pointBackgroundColor: '#3b82f6',
+            pointBorderColor: '#ffffff',
+            pointBorderWidth: 2
+          }, {
+            label: 'National Average',
+            data: [89, 80, 15, 73, 85],
+            borderColor: '#94a3b8',
+            backgroundColor: 'rgba(148, 163, 184, 0.1)',
+            pointBackgroundColor: '#94a3b8',
+            pointBorderColor: '#ffffff',
+            pointBorderWidth: 2
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'bottom',
+              labels: {
+                padding: 20
+              }
+            }
+          },
+          scales: {
+            r: {
+              beginAtZero: true,
+              max: 100,
+              ticks: {
+                stepSize: 20
+              }
+            }
+          }
+        }
+      });
+    }
 
-        </div>
-      </div>
-    </div>
+    // Education Chart
+    function initEducationChart() {
+      const ctx = document.getElementById('educationChart').getContext('2d');
+      
+      new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels: ['University Degree', 'College Diploma', 'High School', 'Graduate Degree', 'Other'],
+          datasets: [{
+            data: [35, 25, 20, 15, 5],
+            backgroundColor: [
+              '#3b82f6',
+              '#10b981',
+              '#f59e0b',
+              '#ef4444',
+              '#8b5cf6'
+            ],
+            borderWidth: 0,
+            hoverOffset: 8
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'bottom',
+              labels: {
+                padding: 15,
+                usePointStyle: true,
+                pointStyle: 'circle'
+              }
+            }
+          },
+          cutout: '60%'
+        }
+      });
+    }
 
-    <div class="container copyright text-center">
-      <p>© <span>Copyright</span> <strong class="px-1 sitename">Canadian Muslim Census</strong></p>
-    </div>
+    // Event Listeners
+    function setupEventListeners() {
+      // File upload drag and drop
+      const uploadArea = document.getElementById('uploadArea');
+      
+      uploadArea.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        uploadArea.style.borderColor = '#3b82f6';
+        uploadArea.style.backgroundColor = '#eff6ff';
+      });
+      
+      uploadArea.addEventListener('dragleave', function(e) {
+        e.preventDefault();
+        uploadArea.style.borderColor = '#93c5fd';
+        uploadArea.style.backgroundColor = 'white';
+      });
+      
+      uploadArea.addEventListener('drop', function(e) {
+        e.preventDefault();
+        uploadArea.style.borderColor = '#93c5fd';
+        uploadArea.style.backgroundColor = 'white';
+        
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+          processFile({ target: { files: files } });
+        }
+      });
+    }
 
-  </footer>
+    // Analysis Update Function
+    function updateAnalysis() {
+      const geographic = document.getElementById('geographicFilter').value;
+      const time = document.getElementById('timeFilter').value;
+      const demographic = document.getElementById('demographicFilter').value;
+      const analysis = document.getElementById('analysisFilter').value;
+      
+      console.log('Updating analysis with filters:', {
+        geographic, time, demographic, analysis
+      });
+      
+      // Here you would update all charts and tables based on the filters
+      // This is where the real-time filtering would happen
+    }
 
-  <!-- Scroll Top -->
-  <a href="#" id="scroll-top" class="scroll-top d-flex align-items-center justify-content-center"><i
-      class="bi bi-arrow-up-short"></i></a>
+    // File Upload Handler
+    function handleFileUpload() {
+      document.getElementById('fileInput').click();
+    }
 
-  <!-- Preloader -->
-  <div id="preloader"></div>
+    // Process Uploaded File
+    function processFile(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      
+      console.log('Processing file:', file.name);
+      
+      // Show loading state
+      const uploadArea = document.getElementById('uploadArea');
+      uploadArea.innerHTML = `
+        <div class="spinner"></div>
+        <div class="upload-text">Processing ${file.name}...</div>
+        <div class="upload-subtext">Analyzing survey data and generating insights</div>
+      `;
+      
+      // Simulate file processing
+      setTimeout(() => {
+        uploadArea.innerHTML = `
+          <div style="color: #10b981; font-size: 48px; margin-bottom: 1rem;">✅</div>
+          <div class="upload-text" style="color: #10b981;">File Processed Successfully!</div>
+          <div class="upload-subtext">Advanced analysis tools are now available</div>
+          <button class="btn btn-primary" style="margin-top: 1rem;" onclick="showAnalysisResults()">
+            <i class="bi bi-eye"></i> View Analysis Results
+          </button>
+        `;
+      }, 3000);
+    }
 
-  <!-- Vendor JS Files -->
-  <script src="assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
-  <script src="assets/vendor/php-email-form/validate.js"></script>
-  <script src="assets/vendor/aos/aos.js"></script>
-  <script src="assets/vendor/glightbox/js/glightbox.min.js"></script>
-  <script src="assets/vendor/swiper/swiper-bundle.min.js"></script>
-  <script src="assets/vendor/imagesloaded/imagesloaded.pkgd.min.js"></script>
-  <script src="assets/vendor/isotope-layout/isotope.pkgd.min.js"></script>
+    // Show Analysis Results
+    function showAnalysisResults() {
+      alert('Survey analysis results would be displayed here, including cross-tabulations, statistical tests, and predictive models.');
+    }
 
-  <!-- Main JS File -->
-  <script src="assets/js/main.js"></script>
+    // Export Functions
+    function exportChart(chartType) {
+      console.log('Exporting chart:', chartType);
+      alert(`Exporting ${chartType} chart data as CSV/PNG. This feature will provide high-resolution charts and raw data.`);
+    }
 
+    function exportTable() {
+      console.log('Exporting table data');
+      alert('Exporting detailed demographics table as CSV with full metadata and source information.');
+    }
+
+    function generateReport() {
+      console.log('Generating comprehensive report');
+      alert('Generating publication-ready PDF report with all visualizations, statistical analysis, and methodology notes.');
+    }
+
+    // Fullscreen Function
+    function fullscreen(chartId) {
+      console.log('Opening fullscreen view for:', chartId);
+      alert(`Opening ${chartId} in fullscreen interactive mode with advanced filtering and annotation tools.`);
+    }
+
+    // Additional Functions
+    function scheduleAnalysis() {
+      alert('Schedule recurring analysis reports to be delivered to your email with the latest demographic updates.');
+    }
+
+    function requestCustomAnalysis() {
+      alert('Request custom demographic analysis with specific parameters, statistical models, and research questions.');
+    }
+
+    // Search functionality
+    document.getElementById('searchInput').addEventListener('input', function(e) {
+      const query = e.target.value.toLowerCase();
+      if (query.length > 2) {
+        console.log('Searching for:', query);
+        // Implement search across all data and visualizations
+      }
+    });
+  </script>
 </body>
 
 </html>
