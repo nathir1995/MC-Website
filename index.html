@@ -4,9 +4,9 @@
 <head>
   <meta charset="utf-8">
   <meta content="width=device-width, initial-scale=1.0" name="viewport">
-  <title>Canadian Muslim Census</title>
-  <meta name="description" content="">
-  <meta name="keywords" content="">
+  <title>Canadian Muslim Census - Data Platform</title>
+  <meta name="description" content="The definitive source for Canadian Muslim demographic data, insights, and research analytics.">
+  <meta name="keywords" content="canadian muslim demographics, islamic population canada, census data, research platform">
 
   <!-- Favicons -->
   <link href="assets/img/favicon.png" rel="icon">
@@ -15,319 +15,1076 @@
   <!-- Fonts -->
   <link href="https://fonts.googleapis.com" rel="preconnect">
   <link href="https://fonts.gstatic.com" rel="preconnect" crossorigin>
-  <link
-    href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100;0,300;0,400;0,500;0,700;0,900;1,100;1,300;1,400;1,500;1,700;1,900&family=Montserrat:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&family=Raleway:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap"
-    rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 
+  <!-- Chart.js for data visualizations -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.min.js"></script>
+  
   <!-- Vendor CSS Files -->
   <link href="assets/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
   <link href="assets/vendor/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
   <link href="assets/vendor/aos/aos.css" rel="stylesheet">
-  <link href="assets/vendor/glightbox/css/glightbox.min.css" rel="stylesheet">
-  <link href="assets/vendor/swiper/swiper-bundle.min.css" rel="stylesheet">
 
-  <!-- Main CSS File -->
-  <link href="assets/css/main.css" rel="stylesheet">
+  <style>
+    :root {
+      /* Modern Color System */
+      --color-primary-50: #eff6ff;
+      --color-primary-100: #dbeafe;
+      --color-primary-500: #3b82f6;
+      --color-primary-600: #2563eb;
+      --color-primary-700: #1d4ed8;
+      --color-primary-900: #1e3a8a;
+      
+      --color-success-50: #ecfdf5;
+      --color-success-500: #10b981;
+      --color-warning-50: #fffbeb;
+      --color-warning-500: #f59e0b;
+      --color-error-50: #fef2f2;
+      --color-error-500: #ef4444;
+      
+      --color-gray-50: #f9fafb;
+      --color-gray-100: #f3f4f6;
+      --color-gray-200: #e5e7eb;
+      --color-gray-300: #d1d5db;
+      --color-gray-400: #9ca3af;
+      --color-gray-500: #6b7280;
+      --color-gray-600: #4b5563;
+      --color-gray-700: #374151;
+      --color-gray-800: #1f2937;
+      --color-gray-900: #111827;
+      
+      /* Typography */
+      --font-family-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      
+      /* Spacing */
+      --space-xs: 0.5rem;
+      --space-sm: 0.75rem;
+      --space-md: 1rem;
+      --space-lg: 1.5rem;
+      --space-xl: 2rem;
+      --space-2xl: 3rem;
+      --space-3xl: 4rem;
+      
+      /* Border Radius */
+      --radius-sm: 0.375rem;
+      --radius-md: 0.5rem;
+      --radius-lg: 0.75rem;
+      --radius-xl: 1rem;
+      
+      /* Shadows */
+      --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+      --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+      --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+      --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: var(--font-family-sans);
+      line-height: 1.6;
+      color: var(--color-gray-900);
+      background-color: var(--color-gray-50);
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    /* Header Styles */
+    .header {
+      background: white;
+      border-bottom: 1px solid var(--color-gray-200);
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .header-content {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 0 var(--space-lg);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      height: 80px;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+      text-decoration: none;
+      color: var(--color-gray-900);
+    }
+
+    .logo-icon {
+      width: 40px;
+      height: 40px;
+      background: linear-gradient(135deg, var(--color-primary-500), var(--color-primary-700));
+      border-radius: var(--radius-lg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 18px;
+      font-weight: 600;
+    }
+
+    .logo-text {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--color-gray-900);
+    }
+
+    .nav {
+      display: flex;
+      gap: var(--space-2xl);
+      align-items: center;
+    }
+
+    .nav-item {
+      color: var(--color-gray-600);
+      text-decoration: none;
+      font-weight: 500;
+      font-size: 15px;
+      padding: var(--space-sm) var(--space-md);
+      border-radius: var(--radius-md);
+      transition: all 0.2s ease;
+    }
+
+    .nav-item:hover, .nav-item.active {
+      color: var(--color-primary-600);
+      background-color: var(--color-primary-50);
+    }
+
+    .search-container {
+      position: relative;
+      width: 320px;
+    }
+
+    .search-input {
+      width: 100%;
+      padding: var(--space-sm) var(--space-md) var(--space-sm) 40px;
+      border: 1px solid var(--color-gray-300);
+      border-radius: var(--radius-lg);
+      background: var(--color-gray-50);
+      font-size: 14px;
+      transition: all 0.2s ease;
+    }
+
+    .search-input:focus {
+      outline: none;
+      border-color: var(--color-primary-500);
+      background: white;
+      box-shadow: 0 0 0 3px var(--color-primary-50);
+    }
+
+    .search-icon {
+      position: absolute;
+      left: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--color-gray-400);
+    }
+
+    /* Dashboard Styles */
+    .dashboard {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: var(--space-2xl) var(--space-lg);
+    }
+
+    .dashboard-header {
+      margin-bottom: var(--space-2xl);
+      text-align: center;
+    }
+
+    .dashboard-title {
+      font-size: 48px;
+      font-weight: 800;
+      color: var(--color-gray-900);
+      margin-bottom: var(--space-md);
+      line-height: 1.1;
+    }
+
+    .dashboard-subtitle {
+      font-size: 20px;
+      color: var(--color-gray-600);
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    /* KPI Grid */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: var(--space-lg);
+      margin-bottom: var(--space-2xl);
+    }
+
+    .kpi-card {
+      background: white;
+      border-radius: var(--radius-xl);
+      padding: var(--space-xl);
+      border: 1px solid var(--color-gray-200);
+      box-shadow: var(--shadow-sm);
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .kpi-card:hover {
+      transform: translateY(-4px);
+      box-shadow: var(--shadow-xl);
+    }
+
+    .kpi-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: linear-gradient(90deg, var(--color-primary-500), var(--color-primary-600));
+    }
+
+    .kpi-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: var(--space-lg);
+    }
+
+    .kpi-icon {
+      width: 56px;
+      height: 56px;
+      border-radius: var(--radius-lg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      font-weight: 600;
+    }
+
+    .kpi-icon.blue { background: var(--color-primary-50); color: var(--color-primary-600); }
+    .kpi-icon.green { background: var(--color-success-50); color: var(--color-success-500); }
+    .kpi-icon.orange { background: var(--color-warning-50); color: var(--color-warning-500); }
+    .kpi-icon.purple { background: #f3e8ff; color: #9333ea; }
+
+    .kpi-content h3 {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--color-gray-600);
+      margin-bottom: var(--space-xs);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .kpi-value {
+      font-size: 36px;
+      font-weight: 800;
+      color: var(--color-gray-900);
+      line-height: 1;
+      margin-bottom: var(--space-sm);
+    }
+
+    .kpi-change {
+      font-size: 14px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: var(--space-xs);
+    }
+
+    .kpi-change.positive { color: var(--color-success-500); }
+    .kpi-change.negative { color: var(--color-error-500); }
+
+    /* Chart Section */
+    .chart-section {
+      margin-bottom: var(--space-3xl);
+    }
+
+    .section-header {
+      text-align: center;
+      margin-bottom: var(--space-2xl);
+    }
+
+    .section-title {
+      font-size: 32px;
+      font-weight: 700;
+      color: var(--color-gray-900);
+      margin-bottom: var(--space-md);
+    }
+
+    .section-subtitle {
+      font-size: 18px;
+      color: var(--color-gray-600);
+    }
+
+    .chart-grid {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: var(--space-xl);
+      margin-bottom: var(--space-xl);
+    }
+
+    .chart-card {
+      background: white;
+      border-radius: var(--radius-xl);
+      padding: var(--space-xl);
+      border: 1px solid var(--color-gray-200);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .chart-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: var(--space-xl);
+    }
+
+    .chart-title {
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--color-gray-900);
+    }
+
+    .chart-filters {
+      display: flex;
+      gap: var(--space-sm);
+    }
+
+    .filter-btn {
+      padding: var(--space-sm) var(--space-md);
+      border: 1px solid var(--color-gray-300);
+      border-radius: var(--radius-md);
+      background: white;
+      color: var(--color-gray-600);
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .filter-btn:hover {
+      border-color: var(--color-primary-500);
+      color: var(--color-primary-600);
+    }
+
+    .filter-btn.active {
+      background: var(--color-primary-500);
+      color: white;
+      border-color: var(--color-primary-500);
+    }
+
+    .chart-container {
+      height: 400px;
+      position: relative;
+    }
+
+    /* StatCan Integration Section */
+    .statcan-section {
+      background: white;
+      border-radius: var(--radius-xl);
+      padding: var(--space-2xl);
+      border: 2px dashed var(--color-gray-300);
+      margin-bottom: var(--space-2xl);
+      text-align: center;
+    }
+
+    .statcan-placeholder {
+      color: var(--color-gray-500);
+      font-size: 18px;
+      margin-bottom: var(--space-lg);
+    }
+
+    .integration-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-sm);
+      background: var(--color-primary-50);
+      color: var(--color-primary-700);
+      padding: var(--space-sm) var(--space-md);
+      border-radius: var(--radius-lg);
+      font-weight: 600;
+      font-size: 14px;
+    }
+
+    /* Insights Panel */
+    .insights-panel {
+      background: white;
+      border-radius: var(--radius-xl);
+      padding: var(--space-xl);
+      border: 1px solid var(--color-gray-200);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .insights-header {
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+      margin-bottom: var(--space-lg);
+    }
+
+    .insights-title {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--color-gray-900);
+    }
+
+    .insight-item {
+      padding: var(--space-md) 0;
+      border-bottom: 1px solid var(--color-gray-100);
+    }
+
+    .insight-item:last-child {
+      border-bottom: none;
+    }
+
+    .insight-tag {
+      display: inline-block;
+      padding: 4px 8px;
+      background: var(--color-primary-50);
+      color: var(--color-primary-700);
+      font-size: 12px;
+      font-weight: 600;
+      border-radius: var(--radius-sm);
+      margin-bottom: var(--space-sm);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .insight-text {
+      font-size: 15px;
+      color: var(--color-gray-700);
+      line-height: 1.6;
+    }
+
+    /* Action Buttons */
+    .action-buttons {
+      display: flex;
+      gap: var(--space-md);
+      justify-content: center;
+      margin-top: var(--space-2xl);
+    }
+
+    .btn {
+      padding: var(--space-md) var(--space-xl);
+      border-radius: var(--radius-lg);
+      font-weight: 600;
+      font-size: 16px;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-sm);
+      transition: all 0.2s ease;
+      border: 2px solid transparent;
+    }
+
+    .btn-primary {
+      background: var(--color-primary-600);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: var(--color-primary-700);
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-lg);
+      color: white;
+    }
+
+    .btn-secondary {
+      background: white;
+      color: var(--color-gray-700);
+      border-color: var(--color-gray-300);
+    }
+
+    .btn-secondary:hover {
+      border-color: var(--color-primary-500);
+      color: var(--color-primary-600);
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-md);
+    }
+
+    /* Footer */
+    .footer {
+      background: var(--color-gray-900);
+      color: white;
+      padding: var(--space-2xl) 0;
+      margin-top: var(--space-3xl);
+    }
+
+    .footer-content {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 0 var(--space-lg);
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: var(--space-xl);
+    }
+
+    .footer-section h4 {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: var(--space-md);
+      color: white;
+    }
+
+    .footer-section p, .footer-section a {
+      color: var(--color-gray-300);
+      text-decoration: none;
+      line-height: 1.6;
+    }
+
+    .footer-section a:hover {
+      color: white;
+    }
+
+    .social-links {
+      display: flex;
+      gap: var(--space-md);
+      margin-top: var(--space-md);
+    }
+
+    .social-link {
+      width: 40px;
+      height: 40px;
+      background: var(--color-gray-700);
+      border-radius: var(--radius-lg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 18px;
+      transition: all 0.2s ease;
+    }
+
+    .social-link:hover {
+      background: var(--color-primary-600);
+      transform: translateY(-2px);
+    }
+
+    /* Mobile Responsive */
+    @media (max-width: 768px) {
+      .header-content {
+        padding: 0 var(--space-md);
+        height: 64px;
+      }
+      
+      .nav {
+        display: none;
+      }
+      
+      .search-container {
+        width: 200px;
+      }
+      
+      .dashboard {
+        padding: var(--space-lg) var(--space-md);
+      }
+      
+      .dashboard-title {
+        font-size: 32px;
+      }
+      
+      .chart-grid {
+        grid-template-columns: 1fr;
+      }
+      
+      .kpi-grid {
+        grid-template-columns: 1fr;
+      }
+      
+      .action-buttons {
+        flex-direction: column;
+        align-items: center;
+      }
+    }
+
+    /* Loading Animations */
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(30px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .animate-fadeInUp {
+      animation: fadeInUp 0.6s ease-out;
+    }
+
+    /* Focus States for Accessibility */
+    .nav-item:focus,
+    .filter-btn:focus,
+    .btn:focus {
+      outline: 2px solid var(--color-primary-500);
+      outline-offset: 2px;
+    }
+  </style>
 </head>
 
-<body class="index-page">
-
-  <header id="header" class="header d-flex align-items-center fixed-top">
-    <div class="container-fluid container-xl position-relative d-flex align-items-center justify-content-between">
-
-      <a href="index.html" class="logo d-flex align-items-center">
-        <!-- Uncomment the line below if you also wish to use an image logo -->
-        <img src="assets/img/main/Canadian_Muslim_Cencus_Logo.png" alt="Canadian Muslim Census Logo" class="logo-image">
-        <!-- <h1 class=" sitename">Canadian Muslim Census</h1> -->
+<body>
+  <!-- Header -->
+  <header class="header">
+    <div class="header-content">
+      <a href="index.html" class="logo">
+        <div class="logo-icon">📊</div>
+        <span class="logo-text">Canadian Muslim Census</span>
       </a>
-
-      <nav id="navmenu" class="navmenu">
-        <ul>
-          <li><a href="about.html">About</a></li>
-          <li><a href="insights.html">Insights</a></li>
-
-          <li><a href="https://docs.google.com/forms/d/e/1FAIpQLSeBiw3MyaTyG9Xofql2EALD9-mvPXeySmuH_4yayRDHSOD5NQ/viewform?usp=header" class="btn-participate">Participate</a></li>
-        </ul>
-        <i class="mobile-nav-toggle d-xl-none bi bi-list"></i>
+      
+      <nav class="nav">
+        <a href="#" class="nav-item active">Dashboard</a>
+        <a href="insights.html" class="nav-item">Data Explorer</a>
+        <a href="about.html" class="nav-item">Research</a>
+        <a href="about.html" class="nav-item">About</a>
+        <a href="blog.html" class="nav-item">Blog</a>
       </nav>
-
+      
+      <div class="search-container">
+        <input type="text" class="search-input" placeholder="Search demographics, insights..." id="searchInput">
+        <i class="bi bi-search search-icon"></i>
+      </div>
     </div>
   </header>
 
-  <main class="main">
+  <main class="dashboard">
+    <!-- Dashboard Header -->
+    <div class="dashboard-header animate-fadeInUp">
+      <h1 class="dashboard-title">Canadian Muslim Demographics</h1>
+      <p class="dashboard-subtitle">Real-time insights and comprehensive analysis of Canada's Muslim population trends, powered by official statistics and community research</p>
+    </div>
 
-    <!-- Hero Section -->
-    <section id="hero" class="hero section dark-background">
+    <!-- KPI Cards -->
+    <div class="kpi-grid">
+      <div class="kpi-card animate-fadeInUp" style="animation-delay: 0.1s">
+        <div class="kpi-header">
+          <div class="kpi-icon blue">👥</div>
+        </div>
+        <div class="kpi-content">
+          <h3>Total Muslim Population</h3>
+          <div class="kpi-value">1.78M</div>
+          <div class="kpi-change positive">
+            <i class="bi bi-arrow-up"></i>
+            +68.3% since 2011
+          </div>
+        </div>
+      </div>
+      
+      <div class="kpi-card animate-fadeInUp" style="animation-delay: 0.2s">
+        <div class="kpi-header">
+          <div class="kpi-icon green">📈</div>
+        </div>
+        <div class="kpi-content">
+          <h3>National Percentage</h3>
+          <div class="kpi-value">4.9%</div>
+          <div class="kpi-change positive">
+            <i class="bi bi-arrow-up"></i>
+            +2.9pp since 2001
+          </div>
+        </div>
+      </div>
+      
+      <div class="kpi-card animate-fadeInUp" style="animation-delay: 0.3s">
+        <div class="kpi-header">
+          <div class="kpi-icon purple">🎓</div>
+        </div>
+        <div class="kpi-content">
+          <h3>Post-Secondary Education</h3>
+          <div class="kpi-value">60%</div>
+          <div class="kpi-change positive">
+            <i class="bi bi-arrow-up"></i>
+            Above national average
+          </div>
+        </div>
+      </div>
+      
+      <div class="kpi-card animate-fadeInUp" style="animation-delay: 0.4s">
+        <div class="kpi-header">
+          <div class="kpi-icon orange">🕌</div>
+        </div>
+        <div class="kpi-content">
+          <h3>Religious Infrastructure</h3>
+          <div class="kpi-value">755</div>
+          <div class="kpi-change positive">
+            <i class="bi bi-arrow-up"></i>
+            Mosques across Canada
+          </div>
+        </div>
+      </div>
+    </div>
 
-      <img src="assets/img/main/hero-bg.jpg" alt="" data-aos="fade-in">
+    <!-- StatCan Survey Integration Section -->
+    <div class="statcan-section animate-fadeInUp" style="animation-delay: 0.5s">
+      <div class="statcan-placeholder">
+        <div class="integration-badge">
+          <i class="bi bi-database"></i>
+          StatCan Survey Integration Ready
+        </div>
+      </div>
+      <h3 style="color: var(--color-gray-700); margin-bottom: 1rem;">Advanced Survey Analysis</h3>
+      <p style="color: var(--color-gray-600); max-width: 600px; margin: 0 auto;">
+        This section is prepared for StatCan survey data integration. Upload your survey data to unlock advanced demographic analysis, 
+        cross-tabulation insights, and predictive modeling capabilities.
+      </p>
+      <div style="margin-top: 1.5rem;">
+        <button class="btn btn-secondary" onclick="handleSurveyUpload()">
+          <i class="bi bi-upload"></i>
+          Upload Survey Data
+        </button>
+      </div>
+    </div>
 
-      <div class="container">
-        <div class="row">
-          <div class="col-xl-4">
-            <h1 data-aos="fade-up">Canada Muslim Insights</h1>
-            <blockquote data-aos="fade-up" data-aos-delay="100">
-              <p>In the 2021 Canadian census, 4.9% of the population identified as Muslim, a significant increase from
-                2.0% in 2001, with
-                nearly 1.8 million people reporting Islam as their religion. </p>
-            </blockquote>
-            <div class="d-flex" data-aos="fade-up" data-aos-delay="200">
-              <a href="https://www.statcan.gc.ca/o1/en/plus/7639-snapshot-muslim-population-canada" class="btn-get-started">Find out more</a>
-              <a href="https://www.youtube.com/watch?v=a_sZlRIqTOA"
-                class="glightbox btn-watch-video d-flex align-items-center"><i class="bi bi-play-circle"></i><span>Watch
-                  Video</span></a>
+    <!-- Data Visualization Section -->
+    <div class="chart-section animate-fadeInUp" style="animation-delay: 0.6s">
+      <div class="section-header">
+        <h2 class="section-title">Population Trends & Analysis</h2>
+        <p class="section-subtitle">Interactive visualizations of demographic growth and distribution patterns</p>
+      </div>
+
+      <div class="chart-grid">
+        <div class="chart-card">
+          <div class="chart-header">
+            <h3 class="chart-title">Population Growth Trajectory</h3>
+            <div class="chart-filters">
+              <button class="filter-btn active" onclick="updateChart('canada')">Canada</button>
+              <button class="filter-btn" onclick="updateChart('provinces')">Provinces</button>
+              <button class="filter-btn" onclick="updateChart('cities')">Cities</button>
             </div>
+          </div>
+          <div class="chart-container">
+            <canvas id="growthChart"></canvas>
+          </div>
+        </div>
+
+        <div class="insights-panel">
+          <div class="insights-header">
+            <i class="bi bi-lightbulb" style="color: var(--color-warning-500); font-size: 20px;"></i>
+            <h3 class="insights-title">Key Insights</h3>
+          </div>
+          
+          <div class="insight-item">
+            <div class="insight-tag">Trending</div>
+            <div class="insight-text">Muslim population growth rate (3.4% annually) significantly exceeds national average (1.2%)</div>
+          </div>
+          
+          <div class="insight-item">
+            <div class="insight-tag">Geographic</div>
+            <div class="insight-text">65% concentrated in Ontario, Quebec, and Alberta with emerging communities in Maritime provinces</div>
+          </div>
+          
+          <div class="insight-item">
+            <div class="insight-tag">Economic</div>
+            <div class="insight-text">Halal market projected to reach $18.34B by 2032, representing 5.8% CAGR growth opportunity</div>
+          </div>
+          
+          <div class="insight-item">
+            <div class="insight-tag">Demographic</div>
+            <div class="insight-text">Median age of 30 years indicates young, dynamic population with high economic potential</div>
           </div>
         </div>
       </div>
 
-    </section><!-- /Hero Section -->
-
-    <!-- Why Us Section -->
-    <section id="why-us" class="why-us section">
-
-      <div class="container">
-
-        <div class="row g-0">
-
-          <div class="col-xl-5 img-bg" data-aos="fade-up" data-aos-delay="100">
-            <img src="assets/img/main/why-us-bg.jpg" alt="">
+      <!-- Additional Charts Row -->
+      <div class="chart-grid">
+        <div class="chart-card">
+          <div class="chart-header">
+            <h3 class="chart-title">Cultural Origins Distribution</h3>
+            <button class="btn btn-secondary" style="padding: 0.5rem 1rem; font-size: 14px;">
+              <i class="bi bi-download"></i>
+              Export Data
+            </button>
           </div>
-
-          <div class="col-xl-7 slides position-relative" data-aos="fade-up" data-aos-delay="200">
-
-            <div class="swiper init-swiper">
-              <script type="application/json" class="swiper-config">
-                {
-                  "loop": true,
-                  "speed": 600,
-                  "autoplay": {
-                    "delay": 5000
-                  },
-                  "slidesPerView": "auto",
-                  "centeredSlides": true,
-                  "pagination": {
-                    "el": ".swiper-pagination",
-                    "type": "bullets",
-                    "clickable": true
-                  },
-                  "navigation": {
-                    "nextEl": ".swiper-button-next",
-                    "prevEl": ".swiper-button-prev"
-                  }
-                }
-              </script>
-              <div class="swiper-wrapper">
-
-                <div class="swiper-slide">
-                  <div class="item">
-                    <h3 class="mb-3">Canada's Ethnocultural and Religious Diversity</h3>
-                    <h4 class="mb-3">Muslim Population Census Data</h4>
-                    <p>Canada is known for its ethnocultural and religious diversity, with every Canadian contributing
-                      to this rich
-                      landscape.</p>
-                    <p>Data on the origins and religions of the population have been collected by the Census of Canada
-                      since 1871. The
-                      2021 Census of Population provided data for over 100 religions practised in Canada.</p>
-                  </div>
-                </div><!-- End slide item -->
-
-                <div class="swiper-slide">
-                  <div class="item">
-                    <h3 class="mb-3">Growth of the Muslim Population</h3>
-                    <h4 class="mb-3">Muslims in Canada Over the Years</h4>
-                    <p>The proportion of Canada's population who reported being Muslim has more than doubled in 20
-                      years, rising from
-                      2.0% (579,640 people) in 2001 to 4.9% (1,775,715 people) in 2021.</p>
-                  </div>
-                </div><!-- End slide item -->
-
-                <div class="swiper-slide">
-                  <div class="item">
-                    <h3 class="mb-3">Diversity Within the Muslim Population</h3>
-                    <h4 class="mb-3">Ethnic and Regional Distribution</h4>
-                    <p>In 2021, South Asians (37.6%) were the largest racialized group among the Muslim population,
-                      followed by Arabs
-                      (32.2%), West Asians (13.0%), and Black people (11.6%).</p>
-                    <p>Close to 3 in 10 (29.5%) of Canada's Muslim population were born in Canada, while 12.7% were born
-                      in Pakistan,
-                      5.8% in Iran, 4.2% in Morocco, and 4.2% in Algeria.</p>
-                  </div>
-                </div><!-- End slide item -->
-
-                <div class="swiper-slide">
-                  <div class="item">
-                    <h3 class="mb-3">Languages Spoken at Home</h3>
-                    <h4 class="mb-3">Linguistic Diversity Among Muslims</h4>
-                    <p>Close to half (47.3%) of the Muslim population reported English as being the language spoken most
-                      often at home
-                      in 2021. Arabic (18.1%), French (15.3%), and Urdu (13.0%) were among the top languages spoken most
-                      often at
-                      home.</p>
-                    <p>Explore more data in the infographic: <strong>The Muslim Population in Canada</strong>.</p>
-                  </div>
-                </div><!-- End slide item -->
-
-              </div>
-
-              <div class="swiper-pagination"></div>
-            </div>
-
-            <div class="swiper-button-prev"></div>
-            <div class="swiper-button-next"></div>
+          <div class="chart-container">
+            <canvas id="originsChart"></canvas>
           </div>
-
         </div>
 
-      </div>
-
-    </section><!-- /Why Us Section -->
-
-    <!-- Services Section -->
-    <section id="services" class="services section">
-
-
-      <div class="container">
-<!-- Section Title -->
-<div class="container section-title" data-aos="fade-up">
-  <h2>Canada Muslim Insights</h2>
-  <p>We provide world class data on the Muslim population in Canada </p>
-</div><!-- End Section Title -->
-
-<div class="container">
-  <div class="row">
-    <div class="col-lg-6">
-      <div class="row">
-        <div class="col-lg-4 col-md-6 service-item d-flex" data-aos="fade-up" data-aos-delay="100">
-          <div class="icon flex-shrink-0"><i class="bi bi-people-fill" style="color: #f57813;"></i></div>
-          <div>
-            <h4 class="title">Muslim Population Growth</h4>
-            <p class="description">The proportion of Muslims in Canada has more than doubled in the past 20 years, reaching 4.9% of the total population in 2021.</p>
-          </div>
-        </div><!-- End Service Item -->
-
-        <div class="col-lg-4 col-md-6 service-item d-flex" data-aos="fade-up" data-aos-delay="200">
-          <div class="icon flex-shrink-0"><i class="bi bi-globe" style="color: #15a04a;"></i></div>
-          <div>
-            <h4 class="title">Diversity Within the Muslim Population</h4>
-            <p class="description">South Asians (37.6%) and Arabs (32.2%) make up the largest racialized groups among Muslims in Canada.</p>
-          </div>
-        </div><!-- End Service Item -->
-
-        <div class="col-lg-4 col-md-6 service-item d-flex" data-aos="fade-up" data-aos-delay="300">
-          <div class="icon flex-shrink-0"><i class="bi bi-graph-up" style="color: #d90769;"></i></div>
-          <div>
-            <h4 class="title">Age Distribution</h4>
-            <p class="description">The Muslim population in Canada is relatively young, with a median age of 30 years compared to 41.2 years for the total population.</p>
-          </div>
-        </div><!-- End Service Item -->
-      </div>
-    </div>
-
-    <div class="col-lg-6">
-      <div class="row">
-        <div class="col-lg-4 col-md-6 service-item d-flex" data-aos="fade-up" data-aos-delay="400">
-          <div class="icon flex-shrink-0"><i class="bi bi-map" style="color: #15bfbc;"></i></div>
-          <div>
-            <h4 class="title">Muslim Population Across Canada</h4>
-            <p class="description">Ontario (6.7%), Quebec (5.1%), and Alberta (4.8%) have the highest Muslim population proportions in the country.</p>
-          </div>
-        </div><!-- End Service Item -->
-
-        <div class="col-lg-4 col-md-6 service-item d-flex" data-aos="fade-up" data-aos-delay="500">
-          <div class="icon flex-shrink-0"><i class="bi bi-translate" style="color: #f5cf13;"></i></div>
-          <div>
-            <h4 class="title">Languages Spoken at Home</h4>
-            <p class="description">English (47.3%), Arabic (18.1%), French (15.3%), and Urdu (13.0%) are the top languages spoken at home by Muslims in Canada.</p>
-          </div>
-        </div><!-- End Service Item -->
-
-        <div class="col-lg-4 col-md-6 service-item d-flex" data-aos="fade-up" data-aos-delay="600">
-          <div class="icon flex-shrink-0"><i class="bi bi-bar-chart-line" style="color: #1335f5;"></i></div>
-          <div>
-            <h4 class="title">Explore More Data</h4>
-            <p class="description">Check out the infographic on the Muslim population in Canada for more in-depth insights and statistics.</p>
-          </div>
-        </div><!-- End Service Item -->
-      </div>
-    </div>
-  </div>
-</div>
+        <div class="chart-card">
+          <div class="chart-header">
+            <h3 class="chart-title">Provincial Distribution</h3>
+            <div class="chart-filters">
+              <button class="filter-btn active" onclick="updateMap('population')">Population</button>
+              <button class="filter-btn" onclick="updateMap('percentage')">Percentage</button>
+              <button class="filter-btn" onclick="updateMap('growth')">Growth</button>
             </div>
-          </div><!-- End Service Item -->
-
-
+          </div>
+          <div class="chart-container" style="display: flex; align-items: center; justify-content: center; background: var(--color-gray-50); border-radius: var(--radius-lg);">
+            <div style="text-align: center; color: var(--color-gray-500);">
+              <div style="font-size: 48px; margin-bottom: 1rem;">🗺️</div>
+              <div style="font-weight: 600; margin-bottom: 0.5rem;">Interactive Map</div>
+              <div style="font-size: 14px;">Provincial demographics visualization</div>
+            </div>
+          </div>
+        </div>
       </div>
+    </div>
 
-    </section><!-- /Recent Posts Section -->
-
+    <!-- Call to Action -->
+    <div class="action-buttons animate-fadeInUp" style="animation-delay: 0.8s">
+      <a href="https://docs.google.com/forms/d/e/1FAIpQLSeBiw3MyaTyG9Xofql2EALD9-mvPXeySmuH_4yayRDHSOD5NQ/viewform?usp=header" class="btn btn-primary">
+        <i class="bi bi-person-plus"></i>
+        Participate in Census
+      </a>
+      <a href="insights.html" class="btn btn-secondary">
+        <i class="bi bi-graph-up"></i>
+        Explore Full Dataset
+      </a>
+    </div>
   </main>
 
-  <footer id="footer" class="footer light-background">
-
-    <div class="footer-top">
-      <div class="container">
-        <div class="row gy-4">
-          <div class="col-lg-5 col-md-12 footer-about">
-            <a href="index.html" class="logo d-flex align-items-center">
-              <span class="sitename">Canadian Muslim Census</span>
-            </a>
-            <p>The leading source of research and insights for Muslims in the Canada.</p>
-            <div class="social-links d-flex mt-4">
-              
-              <a href=""><i class="bi bi-facebook"></i></a>
-              <a href="https://www.instagram.com/canadian_muslim_census/?igsh=MW0zdGpsYXRsbW82bg%3D%3D#"><i class="bi bi-instagram"></i></a>
-              <a href="https://www.linkedin.com/company/canadian-muslim-census/?viewAsMember=true"><i class="bi bi-linkedin"></i></a>
-            </div>
-          </div>
-
-          <div class="col-lg-2 col-6 footer-links">
-          </div>
-
-          <div class="col-lg-2 col-6 footer-links">
-            <h4>Discover</h4>
-            <ul>
-              <li><a href="about.html">About us</a></li>
-              <li><a href="insights.html">Reports</a></li>
-              <li><a href="privacy.html">Privacy</a></li>
-              <li><a href="#">Get in touch</a></li>
-            </ul>
-          </div>
-
-          <div class="col-lg-3 col-md-12 footer-contact text-center text-md-start">
-            <h4>Contact Us</h4>
-            <p class="mt-4"><strong>Phone:</strong> <span>+1 613 777 4079</span></p>
-            <p><strong>Email:</strong> <span>nhaimoun@gmail.com</span></p>
-          </div>
-
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="footer-content">
+      <div class="footer-section">
+        <h4>Canadian Muslim Census</h4>
+        <p>The leading source of research and insights for Muslims in Canada. Committed to data excellence and community empowerment.</p>
+        <div class="social-links">
+          <a href="#" class="social-link"><i class="bi bi-facebook"></i></a>
+          <a href="https://www.instagram.com/canadian_muslim_census/?igsh=MW0zdGpsYXRsbW82bg%3D%3D#" class="social-link"><i class="bi bi-instagram"></i></a>
+          <a href="https://www.linkedin.com/company/canadian-muslim-census/?viewAsMember=true" class="social-link"><i class="bi bi-linkedin"></i></a>
         </div>
       </div>
+      
+      <div class="footer-section">
+        <h4>Research</h4>
+        <p><a href="index.html">Latest Demographics</a></p>
+        <p><a href="insights.html">Data Explorer</a></p>
+        <p><a href="https://www.canada.ca/en/canadian-heritage/campaigns/combatting-islamophobia-canada/annual-report-2023-2024.html">Government Reports</a></p>
+        <p><a href="#">Methodology</a></p>
+      </div>
+      
+      <div class="footer-section">
+        <h4>Organization</h4>
+        <p><a href="about.html">Mission & Vision</a></p>
+        <p><a href="about.html">Leadership Team</a></p>
+        <p><a href="privacy.html">Privacy Policy</a></p>
+        <p><a href="#">Terms of Use</a></p>
+      </div>
+      
+      <div class="footer-section">
+        <h4>Contact Information</h4>
+        <p>Calgary, Alberta, Canada</p>
+        <p><strong>Phone:</strong> +1 613 777 4079</p>
+        <p><strong>Email:</strong> nhaimoun@gmail.com</p>
+        <p><strong>Research Inquiries:</strong> research@canadianmuslimcensus.com</p>
+      </div>
     </div>
-
-    <div class="container copyright text-center">
-      <p>© <span>Copyright</span> <strong class="px-1 sitename">Canadian Muslim Census</strong></p>
-    </div>
-
   </footer>
 
-  <!-- Scroll Top -->
-  <a href="#" id="scroll-top" class="scroll-top d-flex align-items-center justify-content-center"><i
-      class="bi bi-arrow-up-short"></i></a>
+  <script>
+    // Initialize all components when page loads
+    document.addEventListener('DOMContentLoaded', function() {
+      initializeCharts();
+      setupEventListeners();
+    });
 
-  <!-- Preloader -->
-  <div id="preloader"></div>
+    // Initialize all charts
+    function initializeCharts() {
+      initializeGrowthChart();
+      initializeOriginsChart();
+    }
 
-  <!-- Vendor JS Files -->
-  <script src="assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
-  <script src="assets/vendor/php-email-form/validate.js"></script>
-  <script src="assets/vendor/aos/aos.js"></script>
-  <script src="assets/vendor/glightbox/js/glightbox.min.js"></script>
-  <script src="assets/vendor/swiper/swiper-bundle.min.js"></script>
-  <script src="assets/vendor/imagesloaded/imagesloaded.pkgd.min.js"></script>
-  <script src="assets/vendor/isotope-layout/isotope.pkgd.min.js"></script>
+    // Growth Chart
+    function initializeGrowthChart() {
+      const ctx = document.getElementById('growthChart').getContext('2d');
+      
+      window.growthChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: ['2001', '2006', '2011', '2016', '2021'],
+          datasets: [{
+            label: 'Muslim Population',
+            data: [579640, 783700, 1053945, 1420300, 1775710],
+            borderColor: '#3b82f6',
+            backgroundColor: function(context) {
+              const gradient = context.chart.ctx.createLinearGradient(0, 0, 0, 400);
+              gradient.addColorStop(0, 'rgba(59, 130, 246, 0.1)');
+              gradient.addColorStop(1, 'rgba(59, 130, 246, 0.01)');
+              return gradient;
+            },
+            borderWidth: 3,
+            fill: true,
+            tension: 0.4,
+            pointBackgroundColor: '#3b82f6',
+            pointBorderColor: '#ffffff',
+            pointBorderWidth: 3,
+            pointRadius: 6,
+            pointHoverRadius: 8
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              display: false
+            },
+            tooltip: {
+              backgroundColor: 'rgba(0, 0, 0, 0.8)',
+              titleColor: 'white',
+              bodyColor: 'white',
+              borderColor: '#3b82f6',
+              borderWidth: 1,
+              cornerRadius: 8,
+              displayColors: false,
+              callbacks: {
+                label: function(context) {
+                  return 'Population: ' + context.parsed.y.toLocaleString();
+                }
+              }
+            }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              grid: {
+                color: '#f1f5f9',
+                drawBorder: false
+              },
+              ticks: {
+                color: '#6b7280',
+                callback: function(value) {
+                  return (value / 1000000).toFixed(1) + 'M';
+                }
+              }
+            },
+            x: {
+              grid: {
+                display: false
+              },
+              ticks: {
+                color: '#6b7280'
+              }
+            }
+          },
+          interaction: {
+            intersect: false,
+            mode: 'index'
+          }
+        }
+      });
+    }
 
-  <!-- Main JS File -->
-  <script src="assets/js/main.js"></script>
+    // Origins Chart
+    function initializeOriginsChart() {
+      const ctx = document.getElementById('originsChart').getContext('2d');
+      
+      new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels: ['South Asian', 'Arab', 'West Asian', 'Black', 'Other'],
+          datasets: [{
+            data: [37.6, 32.2, 13.0, 11.6, 5.6],
+            backgroundColor: [
+              '#3b82f6',
+              '#10b981',
+              '#f59e0b',
+              '#ef4444',
+              '#8b5cf6'
+            ],
+            borderWidth: 0,
+            hoverOffset: 8
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'bottom',
+              labels: {
+                padding: 20,
+                usePointStyle: true,
+                pointStyle: 'circle',
+                font: {
+                  size: 14,
+                  weight: '500'
+                }
+              }
+            },
+            tooltip: {
+              backgroundColor: 'rgba(0, 0, 0, 0.8)',
+              titleColor: 'white',
+              bodyColor: 'white',
+              cornerRadius: 8,
+              callbacks: {
+                label: function(context) {
+                  return context.label + ': ' + context.parsed + '%';
+                }
+              }
+            }
+          },
+          cutout: '65%'
+        }
+      });
+    }
 
+    // Chart Update Functions
+    function updateChart(scope) {
+      // Update active filter button
+      document.querySelectorAll('.filter-btn').forEach(btn => {
+        btn.classList.remove('active');
+      });
+      event.target.classList.add('active');
+      
+      // Here you would update the chart data based on scope
+      console.log('Updating chart for scope:', scope);
+    }
+
+    function updateMap(type) {
+      // Update active filter button for map
+      const mapFilters = event.target.parentElement.querySelectorAll('.filter-btn');
+      mapFilters.forEach(btn => btn.classList.remove('active'));
+      event.target.classList.add('active');
+      
+      console.log('Updating map for type:', type);
+    }
+
+    // Event Listeners
+    function setupEventListeners() {
+      // Search functionality
+      const searchInput = document.getElementById('searchInput');
+      
+      searchInput.addEventListener('input', function(e) {
+        const query = e.target.value.toLowerCase();
+        console.log('Searching for:', query);
+        
+        // Implement search suggestions here
+        if (query.length > 2) {
+          // Show search suggestions
+          console.log('Showing suggestions for:', query);
+        }
+      });
+    }
+
+    // Survey Upload Handler
+    function handleSurveyUpload() {
+      // This will be replaced with actual file upload functionality
+      alert('Survey upload functionality will be implemented here. This will process StatCan survey data for advanced demographic analysis.');
+    }
+
+    // Smooth scrolling for internal links
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+      anchor.addEventListener('click', function (e) {
+        e.preventDefault();
+        const target = document.querySelector(this.getAttribute('href'));
+        if (target) {
+          target.scrollIntoView({
+            behavior: 'smooth',
+            block: 'start'
+          });
+        }
+      });
+    });
+  </script>
 </body>
 
 </html>
