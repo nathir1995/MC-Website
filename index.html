@@ -884,6 +884,7 @@
     document.addEventListener('DOMContentLoaded', function() {
       initializeCharts();
       setupEventListeners();
+      fetchAndPopulateStatCan();
     });
 
     // Initialize all charts
@@ -902,6 +903,7 @@
           labels: ['2001', '2006', '2011', '2016', '2021'],
           datasets: [{
             label: 'Muslim Population',
+            // Default values; will be replaced when StatCan data loads
             data: [579640, 783700, 1053945, 1420300, 1775710],
             borderColor: '#3b82f6',
             backgroundColor: function(context) {
@@ -1063,6 +1065,55 @@
           console.log('Showing suggestions for:', query);
         }
       });
+    }
+
+    // --- StatCan Fetch & Populate ---
+    async function fetchAndPopulateStatCan() {
+      // Note: StatCan WDS JSON endpoints can be flaky and CORS-limited.
+      // We attempt a fetch; if it fails, we keep defaults. Attribution is appended regardless.
+      try {
+        // First try local masterdata; replace/update files in assets/data/statcan as needed.
+        const response = await fetch('assets/data/statcan/census_2021/muslim_timeseries.json', { cache: 'no-store' });
+        if (!response.ok) throw new Error('Network response was not ok');
+        const data = await response.json();
+
+        // Expected shape: { years: ['2001','2006','2011','2016','2021'], counts: [..] }
+        if (data && Array.isArray(data.years) && Array.isArray(data.counts) && data.counts.length === data.years.length) {
+          // Update growth chart
+          if (window.growthChart) {
+            window.growthChart.data.labels = data.years;
+            window.growthChart.data.datasets[0].data = data.counts;
+            window.growthChart.update();
+          }
+
+          // Update KPI: Total Muslim Population (latest value)
+          const latest = data.counts[data.counts.length - 1];
+          const kpiNodes = Array.from(document.querySelectorAll('.kpi-content h3')).map(h => h.textContent.trim());
+          const totalIdx = kpiNodes.findIndex(t => t.toLowerCase().includes('total muslim population'));
+          if (totalIdx !== -1) {
+            const valueEl = document.querySelectorAll('.kpi-value')[totalIdx];
+            if (valueEl) valueEl.textContent = Number(latest).toLocaleString();
+          }
+        }
+      } catch (err) {
+        console.warn('StatCan local fetch failed, using defaults:', err);
+      } finally {
+        appendStatCanAttribution();
+      }
+    }
+
+    function appendStatCanAttribution() {
+      // Add a compact data source note under the dashboard header if not present
+      const header = document.querySelector('.dashboard-header');
+      if (!header) return;
+      if (header.querySelector('.data-source-note')) return;
+      const small = document.createElement('div');
+      small.className = 'data-source-note';
+      small.style.marginTop = '8px';
+      small.style.color = 'var(--color-gray-500)';
+      small.style.fontSize = '13px';
+      small.innerHTML = 'Data source: <a href="https://www.statcan.gc.ca/eng" target="_blank" rel="noopener">Statistics Canada</a> (2021 Census)';
+      header.appendChild(small);
     }
 
     // Survey Upload Handler
