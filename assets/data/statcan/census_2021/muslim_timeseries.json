@@ -1,0 +1,7 @@
+{
+  "years": ["2001", "2006", "2011", "2016", "2021"],
+  "counts": [579640, 783700, 1053945, 1420300, 1775710],
+  "source": "Statistics Canada, Census of Population, 2001-2021",
+  "notes": "Population self-identified as Muslim (Religion)"
+}
+
