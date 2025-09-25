@@ -19,6 +19,9 @@
 
   <!-- Chart.js and additional visualization libraries -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.min.js"></script>
+  <!-- CSV & XLSX parsers for client-side PUMF ingestion -->
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   
   <!-- Vendor CSS Files -->
   <link href="assets/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
@@ -350,6 +353,77 @@
       margin-bottom: var(--space-xl);
     }
 
+    /* PUMF Controls */
+    .pumf-controls {
+      background: white;
+      border: 1px solid var(--color-gray-200);
+      border-radius: var(--radius-lg);
+      padding: var(--space-lg);
+      margin-bottom: var(--space-lg);
+    }
+
+    .pumf-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: var(--space-lg);
+      align-items: end;
+    }
+
+    .control-group {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-sm);
+    }
+
+    .control-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--color-gray-700);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .control-select, .control-input {
+      padding: var(--space-sm) var(--space-md);
+      border: 1px solid var(--color-gray-300);
+      border-radius: var(--radius-md);
+      background: white;
+      font-size: 14px;
+      color: var(--color-gray-700);
+    }
+
+    .results-grid {
+      display: grid;
+      grid-template-columns: 1.5fr 1fr;
+      gap: var(--space-xl);
+    }
+
+    @media (max-width: 992px) {
+      .results-grid { grid-template-columns: 1fr; }
+    }
+
+    .preview-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+      background: white;
+      border: 1px solid var(--color-gray-200);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+    }
+
+    .preview-table th, .preview-table td {
+      padding: 8px 10px;
+      border-bottom: 1px solid var(--color-gray-100);
+    }
+
+    .preview-table th { background: var(--color-gray-50); text-align: left; }
+
+    .note {
+      font-size: 13px;
+      color: var(--color-gray-600);
+    }
+
     .survey-title {
       font-size: 28px;
       font-weight: 800;
@@ -678,6 +752,9 @@
       <p class="page-subtitle animate-fadeInUp" style="animation-delay: 0.2s">
         Interactive analytics platform for comprehensive demographic research and statistical analysis of Canada's Muslim population
       </p>
+      <div class="data-source-note" style="color: rgba(255, 255, 255, 0.9); font-size: 13px; margin-top: 8px;">
+        Contains information licensed under the Statistics Canada Open Licence.
+      </div>
     </div>
   </section>
 
@@ -743,7 +820,78 @@
         <div class="upload-icon">📊</div>
         <div class="upload-text">Upload StatCan Survey Data</div>
         <div class="upload-subtext">Drag & drop CSV, XLSX, or SAV files • Max 100MB</div>
-        <input type="file" id="fileInput" style="display: none;" accept=".csv,.xlsx,.sav" onchange="processFile(event)">
+        <input type="file" id="fileInput" style="display: none;" accept=".csv,.xlsx,.xls,.sav" onchange="processFile(event)">
+      </div>
+
+      <div class="pumf-controls" id="pumfUrlLoader">
+        <div class="pumf-grid">
+          <div class="control-group" style="grid-column: 1 / -1;">
+            <label class="control-label">Load from URL (optional)</label>
+            <div style="display:flex; gap: 8px;">
+              <input type="url" id="pumfUrlInput" class="control-input" placeholder="https://.../statcan_pumf.csv or .xlsx">
+              <button class="btn btn-secondary" id="pumfUrlBtn"><i class="bi bi-link-45deg"></i> Load URL</button>
+            </div>
+            <div class="note">Note: Remote files must allow CORS; otherwise upload the file above.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="pumf-controls" id="pumfControls" style="display:none;">
+        <div class="pumf-grid">
+          <div class="control-group">
+            <label class="control-label">Row Variable</label>
+            <select id="rowVar" class="control-select"></select>
+          </div>
+          <div class="control-group">
+            <label class="control-label">Column Variable</label>
+            <select id="colVar" class="control-select"></select>
+          </div>
+          <div class="control-group">
+            <label class="control-label">Weight Variable</label>
+            <select id="weightVar" class="control-select"></select>
+          </div>
+          <div class="control-group">
+            <label class="control-label">Measure</label>
+            <select id="measureType" class="control-select">
+              <option value="weighted">Weighted Count</option>
+              <option value="rowPct">Row %</option>
+              <option value="colPct">Column %</option>
+            </select>
+          </div>
+          <div style="display:flex; gap: 8px;">
+            <button class="btn btn-primary" id="generateCrosstabBtn"><i class="bi bi-table"></i> Generate Crosstab</button>
+            <button class="btn btn-secondary" id="downloadCrosstabBtn"><i class="bi bi-download"></i> Export CSV</button>
+          </div>
+        </div>
+        <div id="pumfStatus" class="note" style="margin-top: 8px;"></div>
+      </div>
+
+      <div id="pumfResults" style="display:none;">
+        <div class="results-grid">
+          <div class="analysis-card">
+            <div class="card-header"><h3 class="card-title">Weighted Crosstab</h3></div>
+            <div class="chart-container" style="height: 360px;">
+              <canvas id="pumfChart"></canvas>
+            </div>
+          </div>
+          <div class="analysis-card">
+            <div class="card-header"><h3 class="card-title">Data Preview</h3></div>
+            <div style="max-height: 360px; overflow:auto;">
+              <table class="preview-table" id="pumfPreviewTable"></table>
+            </div>
+          </div>
+        </div>
+        <div class="analysis-card" style="margin-top: var(--space-xl);">
+          <div class="card-header"><h3 class="card-title">Crosstab Table</h3></div>
+          <div style="overflow:auto;">
+            <table class="data-table" id="pumfResultTable"></table>
+          </div>
+        </div>
+        <div class="note" style="margin-top: 10px;">Data source: Statistics Canada PUMF. Ensure correct application of survey weights and filters for your analysis scope.</div>
+        <div class="analysis-card" style="margin-top: var(--space-xl);">
+          <div class="card-header"><h3 class="card-title">Summary Statistics</h3></div>
+          <div id="pumfSummary" class="note">Load a file to see variable counts, missingness, and weight totals.</div>
+        </div>
       </div>
 
       <div class="analysis-features">
@@ -1229,6 +1377,31 @@
           processFile({ target: { files: files } });
         }
       });
+
+      // URL loader
+      const urlBtn = document.getElementById('pumfUrlBtn');
+      if (urlBtn) {
+        urlBtn.addEventListener('click', function() {
+          const url = (document.getElementById('pumfUrlInput') || {}).value || '';
+          if (!url) { alert('Enter a valid URL to load.'); return; }
+          loadPUMFFromURL(url);
+        });
+      }
+
+      // Generate crosstab
+      const genBtn = document.getElementById('generateCrosstabBtn');
+      if (genBtn) {
+        genBtn.addEventListener('click', function() {
+          generateCrosstabAndRender();
+        });
+      }
+
+      const dlBtn = document.getElementById('downloadCrosstabBtn');
+      if (dlBtn) {
+        dlBtn.addEventListener('click', function() {
+          downloadCrosstabCSV();
+        });
+      }
     }
 
     // Analysis Update Function
@@ -1251,32 +1424,376 @@
       document.getElementById('fileInput').click();
     }
 
-    // Process Uploaded File
+    // Process Uploaded File (CSV/XLSX/SAV guidance)
     function processFile(event) {
       const file = event.target.files[0];
       if (!file) return;
-      
-      console.log('Processing file:', file.name);
-      
-      // Show loading state
       const uploadArea = document.getElementById('uploadArea');
       uploadArea.innerHTML = `
         <div class="spinner"></div>
         <div class="upload-text">Processing ${file.name}...</div>
         <div class="upload-subtext">Analyzing survey data and generating insights</div>
       `;
-      
-      // Simulate file processing
-      setTimeout(() => {
-        uploadArea.innerHTML = `
-          <div style="color: #10b981; font-size: 48px; margin-bottom: 1rem;">✅</div>
-          <div class="upload-text" style="color: #10b981;">File Processed Successfully!</div>
-          <div class="upload-subtext">Advanced analysis tools are now available</div>
-          <button class="btn btn-primary" style="margin-top: 1rem;" onclick="showAnalysisResults()">
-            <i class="bi bi-eye"></i> View Analysis Results
-          </button>
-        `;
-      }, 3000);
+      const name = file.name.toLowerCase();
+      if (name.endsWith('.csv')) {
+        Papa.parse(file, {
+          header: true,
+          dynamicTyping: true,
+          skipEmptyLines: true,
+          worker: true,
+          complete: function(results) {
+            onPumfLoaded(file.name, results.data);
+          },
+          error: function(err) {
+            showUploadError('CSV parse failed: ' + (err && err.message ? err.message : err));
+          }
+        });
+      } else if (name.endsWith('.xlsx') || name.endsWith('.xls')) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          try {
+            const data = new Uint8Array(e.target.result);
+            const wb = XLSX.read(data, { type: 'array' });
+            const ws = wb.Sheets[wb.SheetNames[0]];
+            const json = XLSX.utils.sheet_to_json(ws, { defval: null });
+            onPumfLoaded(file.name, json);
+          } catch (err) {
+            showUploadError('XLSX parse failed: ' + err.message);
+          }
+        };
+        reader.onerror = function() { showUploadError('Failed to read XLSX file.'); };
+        reader.readAsArrayBuffer(file);
+      } else if (name.endsWith('.sav')) {
+        showUploadError('SPSS .sav is not supported in-browser. Please convert to CSV/XLSX (see guidance below).');
+      } else {
+        showUploadError('Unsupported file type. Please upload CSV or XLSX.');
+      }
+    }
+
+    function showUploadError(msg) {
+      const uploadArea = document.getElementById('uploadArea');
+      uploadArea.innerHTML = `
+        <div style="color: #ef4444; font-size: 36px; margin-bottom: 0.5rem;">⚠️</div>
+        <div class="upload-text" style="color: #ef4444;">${msg}</div>
+        <div class="upload-subtext">Tip: Use R (haven) or Python (pyreadstat) to convert .sav</div>
+      `;
+    }
+
+    async function loadPUMFFromURL(url) {
+      const uploadArea = document.getElementById('uploadArea');
+      uploadArea.innerHTML = `
+        <div class="spinner"></div>
+        <div class="upload-text">Fetching from URL...</div>
+        <div class="upload-subtext">Downloading file and parsing</div>
+      `;
+      try {
+        const lower = url.toLowerCase();
+        if (lower.endsWith('.csv')) {
+          const resp = await fetch(url, { cache: 'no-store' });
+          if (!resp.ok) throw new Error('HTTP ' + resp.status);
+          const text = await resp.text();
+          const parsed = Papa.parse(text, { header: true, dynamicTyping: true, skipEmptyLines: true });
+          onPumfLoaded(url.split('/').pop(), parsed.data);
+        } else if (lower.endsWith('.xlsx') || lower.endsWith('.xls')) {
+          const resp = await fetch(url, { cache: 'no-store' });
+          if (!resp.ok) throw new Error('HTTP ' + resp.status);
+          const buf = await resp.arrayBuffer();
+          const wb = XLSX.read(new Uint8Array(buf), { type: 'array' });
+          const ws = wb.Sheets[wb.SheetNames[0]];
+          const json = XLSX.utils.sheet_to_json(ws, { defval: null });
+          onPumfLoaded(url.split('/').pop(), json);
+        } else if (lower.endsWith('.sav')) {
+          showUploadError('SPSS .sav is not supported in-browser due to format complexity and WASM size. Please convert to CSV/XLSX.');
+        } else {
+          throw new Error('Unsupported extension. Use .csv or .xlsx');
+        }
+      } catch (err) {
+        showUploadError('URL load failed: ' + err.message + '. Ensure CORS is enabled.');
+      }
+    }
+
+    function onPumfLoaded(name, rows) {
+      if (!Array.isArray(rows) || rows.length === 0) { showUploadError('No rows found in file.'); return; }
+      // Normalize keys to strings
+      const normalized = rows.map(r => {
+        const o = {};
+        Object.keys(r || {}).forEach(k => { o[String(k).trim()] = r[k]; });
+        return o;
+      });
+      window.pumfData = normalized;
+      window.pumfColumns = Object.keys(normalized[0] || {});
+      const uploadArea = document.getElementById('uploadArea');
+      uploadArea.innerHTML = `
+        <div style=\"color: #10b981; font-size: 48px; margin-bottom: 1rem;\">✅</div>
+        <div class=\"upload-text\" style=\"color: #10b981;\">Loaded ${name}</div>
+        <div class=\"upload-subtext\">${normalized.length.toLocaleString()} records</div>
+      `;
+      document.getElementById('pumfControls').style.display = '';
+      document.getElementById('pumfResults').style.display = '';
+      populateVariableSelectors(window.pumfColumns);
+      renderPreview(normalized);
+      renderSummary(normalized);
+      const status = document.getElementById('pumfStatus');
+      const weightGuess = detectWeightColumn(window.pumfColumns);
+      status.textContent = `Detected ${window.pumfColumns.length} variables. ${weightGuess ? 'Suggested weight: ' + weightGuess : 'No obvious weight detected.'}`;
+      if (weightGuess) {
+        const wSel = document.getElementById('weightVar');
+        for (let i = 0; i < wSel.options.length; i++) {
+          if (wSel.options[i].value === weightGuess) { wSel.selectedIndex = i; break; }
+        }
+      }
+      // Auto-pick first two categorical-like variables for quick start
+      autoSelectCategoricals();
+      generateCrosstabAndRender();
+    }
+
+    function populateVariableSelectors(columns) {
+      const selects = [document.getElementById('rowVar'), document.getElementById('colVar'), document.getElementById('weightVar')];
+      selects.forEach(sel => { sel.innerHTML = columns.map(c => `<option value="${c}">${c}</option>`).join(''); });
+    }
+
+    function detectWeightColumn(columns) {
+      const candidates = ['WGHT_PER','WTS_P','WTS','WEIGHT','WGHT','WT','WTP','W_F','FINALWGT','PUMFIDWT'];
+      const lower = new Set(columns.map(c => c.toLowerCase()));
+      for (const cand of candidates) {
+        if (lower.has(cand.toLowerCase())) return columns.find(c => c.toLowerCase() === cand.toLowerCase());
+      }
+      return null;
+    }
+
+    function isCategoricalSampled(values) {
+      const set = new Set();
+      for (let i = 0; i < Math.min(values.length, 2000); i++) {
+        const v = values[i];
+        const key = v === null || v === undefined ? '' : String(v);
+        set.add(key);
+        if (set.size > 50) return false; // too many unique values
+      }
+      return true;
+    }
+
+    function autoSelectCategoricals() {
+      const cols = window.pumfColumns || [];
+      const data = window.pumfData || [];
+      if (cols.length === 0 || data.length === 0) return;
+      const sample = (col) => data.slice(0, 500).map(r => r[col]);
+      const categoricalCols = cols.filter(c => isCategoricalSampled(sample(c)));
+      const rowSel = document.getElementById('rowVar');
+      const colSel = document.getElementById('colVar');
+      if (categoricalCols[0]) rowSel.value = categoricalCols[0];
+      if (categoricalCols[1]) colSel.value = categoricalCols[1];
+    }
+
+    function renderPreview(rows) {
+      const table = document.getElementById('pumfPreviewTable');
+      const cols = Object.keys(rows[0] || {});
+      const head = `<thead><tr>${cols.map(c => `<th>${c}</th>`).join('')}</tr></thead>`;
+      const body = `<tbody>${rows.slice(0, 10).map(r => `<tr>${cols.map(c => `<td>${safeCell(r[c])}</td>`).join('')}</tr>`).join('')}</tbody>`;
+      table.innerHTML = head + body;
+    }
+
+    function renderSummary(rows) {
+      const el = document.getElementById('pumfSummary');
+      if (!el || !rows || rows.length === 0) return;
+      const cols = Object.keys(rows[0] || {});
+      const total = rows.length;
+      const summaries = cols.slice(0, 12).map(col => {
+        let missing = 0; const uniques = new Set();
+        for (let i = 0; i < Math.min(total, 5000); i++) {
+          const v = rows[i][col];
+          if (v === null || v === undefined || v === '') missing++;
+          uniques.add(String(v));
+        }
+        return { col, missing, uniques: uniques.size };
+      });
+      const html = `
+        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">
+          ${summaries.map(s => `
+            <div style=\"background:#fff;border:1px solid var(--color-gray-200);border-radius:8px;padding:10px;\">
+              <div style=\"font-weight:600;margin-bottom:6px;color:var(--color-gray-800);\">${escapeHtml(s.col)}</div>
+              <div style=\"color:var(--color-gray-600);font-size:13px;\">Unique (sample): ${s.uniques}</div>
+              <div style=\"color:var(--color-gray-600);font-size:13px;\">Missing (sample): ${s.missing}</div>
+            </div>
+          `).join('')}
+        </div>
+      `;
+      el.innerHTML = html;
+    }
+
+    function safeCell(v) {
+      if (v === null || v === undefined) return '';
+      if (typeof v === 'number') return Number.isFinite(v) ? v : '';
+      const s = String(v);
+      return s.length > 200 ? s.slice(0, 200) + '…' : s;
+    }
+
+    function generateCrosstabAndRender() {
+      const rowVar = document.getElementById('rowVar').value;
+      const colVar = document.getElementById('colVar').value;
+      const weightVar = document.getElementById('weightVar').value;
+      const measureType = document.getElementById('measureType').value;
+      const result = computeCrosstab(window.pumfData, rowVar, colVar, weightVar);
+      renderCrosstabChart(result, measureType);
+      renderCrosstabTable(result, measureType);
+    }
+
+    function computeCrosstab(rows, rowVar, colVar, weightVar) {
+      const rowCats = [];
+      const colCats = [];
+      const rowIndex = new Map();
+      const colIndex = new Map();
+      const getIdx = (map, arr, key) => {
+        if (map.has(key)) return map.get(key);
+        const idx = arr.length; arr.push(key); map.set(key, idx); return idx;
+      };
+      const isMissing = (v) => v === null || v === undefined || v === '' || v === 'NA';
+      // Build matrix
+      const matrix = [];
+      const totalsRow = [];
+      let grandTotal = 0;
+      for (let i = 0; i < rows.length; i++) {
+        const r = rows[i];
+        const rv = isMissing(r[rowVar]) ? '(Missing)' : String(r[rowVar]);
+        const cv = isMissing(r[colVar]) ? '(Missing)' : String(r[colVar]);
+        const w = Number(r[weightVar] ?? 1);
+        if (!Number.isFinite(w)) continue;
+        const ri = getIdx(rowIndex, rowCats, rv);
+        const ci = getIdx(colIndex, colCats, cv);
+        if (!matrix[ri]) matrix[ri] = new Array(colCats.length).fill(0);
+        // Ensure dynamic expansion
+        if (matrix[ri].length < colCats.length) {
+          const need = colCats.length - matrix[ri].length;
+          for (let k = 0; k < need; k++) matrix[ri].push(0);
+        }
+        matrix[ri][ci] += w;
+        totalsRow[ci] = (totalsRow[ci] || 0) + w;
+        grandTotal += w;
+      }
+      // Replace undefined rows with zeros for rectangular shape
+      for (let ri = 0; ri < matrix.length; ri++) {
+        matrix[ri] = matrix[ri] || [];
+        if (matrix[ri].length < colCats.length) {
+          const need = colCats.length - matrix[ri].length;
+          for (let k = 0; k < need; k++) matrix[ri].push(0);
+        }
+      }
+      // Row totals
+      const totalsCol = matrix.map(row => row.reduce((a,b)=>a+b,0));
+      return { rowCats, colCats, matrix, totalsRow: totalsRow.map(v=>v||0), totalsCol, grandTotal };
+    }
+
+    let pumfChartInstance = null;
+    function renderCrosstabChart(result, measureType) {
+      const labels = result.rowCats;
+      const datasets = result.colCats.map((col, ci) => {
+        const raw = result.matrix.map(row => row[ci]);
+        let data = raw;
+        if (measureType === 'rowPct') {
+          data = raw.map((v, ri) => result.totalsCol[ri] ? (v / result.totalsCol[ri]) * 100 : 0);
+        } else if (measureType === 'colPct') {
+          const colTot = result.totalsRow[ci] || 1;
+          data = raw.map(v => colTot ? (v / colTot) * 100 : 0);
+        }
+        return {
+          label: col,
+          data,
+          backgroundColor: palette(ci),
+          borderRadius: 3,
+          borderSkipped: false
+        };
+      });
+      const ctx = document.getElementById('pumfChart').getContext('2d');
+      if (pumfChartInstance) pumfChartInstance.destroy();
+      pumfChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: { labels, datasets },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'bottom' },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  const v = context.parsed.y;
+                  if (document.getElementById('measureType').value === 'weighted') {
+                    return `${context.dataset.label}: ${Math.round(v).toLocaleString()}`;
+                  } else {
+                    return `${context.dataset.label}: ${v.toFixed(1)}%`;
+                  }
+                }
+              }
+            }
+          },
+          scales: {
+            y: {
+              stacked: false,
+              beginAtZero: true,
+              ticks: {
+                callback: function(value) {
+                  return document.getElementById('measureType').value === 'weighted' ? Math.round(value).toLocaleString() : value + '%';
+                }
+              }
+            },
+            x: { stacked: false }
+          }
+        }
+      });
+    }
+
+    function palette(i) {
+      const colors = ['#3b82f6','#10b981','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#84cc16','#f43f5e','#a855f7','#22c55e'];
+      return colors[i % colors.length];
+    }
+
+    function renderCrosstabTable(result, measureType) {
+      const table = document.getElementById('pumfResultTable');
+      const head = `<thead><tr><th>${escapeHtml('')}</th>${result.colCats.map(c=>`<th>${escapeHtml(c)}</th>`).join('')}<th>Total</th></tr></thead>`;
+      const bodyRows = result.rowCats.map((r, ri) => {
+        const cells = result.colCats.map((c, ci) => formatMeasure(result.matrix[ri][ci], ri, ci, result, measureType));
+        const totalCell = measureType === 'weighted' ? Math.round(result.totalsCol[ri]).toLocaleString() : '100.0%';
+        return `<tr><td><strong>${escapeHtml(r)}</strong></td>${cells.map(c=>`<td>${c}</td>`).join('')}<td>${totalCell}</td></tr>`;
+      }).join('');
+      const totalRowCells = result.totalsRow.map((v, ci) => measureType === 'weighted' ? Math.round(v).toLocaleString() : '100.0%');
+      const totalRow = `<tr><td><strong>Total</strong></td>${totalRowCells.map(c=>`<td>${c}</td>`).join('')}<td>${measureType === 'weighted' ? Math.round(result.grandTotal).toLocaleString() : '100.0%'}</td></tr>`;
+      table.innerHTML = head + `<tbody>${bodyRows}${totalRow}</tbody>`;
+    }
+
+    function formatMeasure(value, ri, ci, res, type) {
+      if (type === 'weighted') return Math.round(value).toLocaleString();
+      if (type === 'rowPct') {
+        const den = res.totalsCol[ri] || 1; return ((value/den)*100).toFixed(1) + '%';
+      }
+      if (type === 'colPct') {
+        const den = res.totalsRow[ci] || 1; return ((value/den)*100).toFixed(1) + '%';
+      }
+      return value.toLocaleString();
+    }
+
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+    }
+
+    function downloadCrosstabCSV() {
+      const rows = [];
+      const result = (function(){
+        const rowVar = document.getElementById('rowVar').value;
+        const colVar = document.getElementById('colVar').value;
+        const weightVar = document.getElementById('weightVar').value;
+        return computeCrosstab(window.pumfData, rowVar, colVar, weightVar);
+      })();
+      rows.push(['', ...result.colCats, 'Total']);
+      for (let ri = 0; ri < result.rowCats.length; ri++) {
+        const arr = [result.rowCats[ri]];
+        for (let ci = 0; ci < result.colCats.length; ci++) arr.push(Math.round(result.matrix[ri][ci]));
+        arr.push(Math.round(result.totalsCol[ri]));
+        rows.push(arr);
+      }
+      rows.push(['Total', ...result.totalsRow.map(v=>Math.round(v)), Math.round(result.grandTotal)]);
+      const csv = rows.map(r => r.map(v => typeof v === 'string' && v.includes(',') ? '"' + v.replace(/"/g,'""') + '"' : v).join(',')).join('\n');
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = 'crosstab.csv'; a.click(); URL.revokeObjectURL(url);
     }
 
     // Show Analysis Results
