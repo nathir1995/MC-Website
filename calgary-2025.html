@@ -20,7 +20,7 @@
   <link href="assets/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
   <link href="assets/vendor/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
   <link href="assets/vendor/aos/aos.css" rel="stylesheet">
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
 
 
   <style>
@@ -154,32 +154,7 @@
           </select>
         </div>
       </div>
-      <div class="polls-section">
-        <div class="poll-header">
-          <div>
-            <div class="poll-title">Calgary Mayoral Polls</div>
-            <div class="poll-meta">Leger • Field: Sep 26–28, 2025 • n=490 (Likely Voters: 373) • ±4.4pp</div>
-          </div>
-        </div>
-        <div class="poll-grid">
-          <div class="poll-card">
-            <h5>Vote intention (All respondents)</h5>
-            <canvas id="pollAllChart" height="160"></canvas>
-          </div>
-          <div class="poll-card">
-            <h5>Vote intention (Likely voters)</h5>
-            <canvas id="pollLVChart" height="160"></canvas>
-          </div>
-          <div class="poll-card">
-            <h5>Approval (Favourable)</h5>
-            <canvas id="approvalChart" height="160"></canvas>
-          </div>
-          <div class="poll-card">
-            <h5>Name awareness</h5>
-            <canvas id="awarenessChart" height="160"></canvas>
-          </div>
-        </div>
-      </div>
+      
 
       <div class="controls">
         <input type="text" id="searchBox" placeholder="Search by name or party..." style="flex: 1; min-width: 250px;">
@@ -859,27 +834,30 @@
       const awareLabels = ['Gondek','Farkas','Sharp','Davison','Thiessen'];
       const palette = ['#3b82f6','#ef4444','#10b981','#f59e0b','#8b5cf6','#94a3b8'];
 
-      createBar('pollAllChart', labels, labels.map(l => poll.results[l.toLowerCase()] ?? null), palette);
-      createBar('pollLVChart', labels, labels.map(l => poll.likelyVoterResults[l.toLowerCase()] ?? null), palette);
-      createBar('approvalChart', apprLabels, apprLabels.map(l => poll.approval[l.toLowerCase()] ?? null), palette.slice(0,5));
-      createBar('awarenessChart', awareLabels, awareLabels.map(l => poll.awareness[l.toLowerCase()] ?? null), palette.slice(0,5));
+      createBar('pollAllChart', labels, labels.map(l => poll.results[l.toLowerCase()] ?? null), palette, '%');
+      createBar('pollLVChart', labels, labels.map(l => poll.likelyVoterResults[l.toLowerCase()] ?? null), palette, '%');
+      createBar('approvalChart', apprLabels, apprLabels.map(l => poll.approval[l.toLowerCase()] ?? null), palette.slice(0,5), '%');
+      createBar('awarenessChart', awareLabels, awareLabels.map(l => poll.awareness[l.toLowerCase()] ?? null), palette.slice(0,5), '%');
     }
 
-    function createBar(id, labels, data, colors) {
+    function createBar(id, labels, data, colors, unit = '') {
       const el = document.getElementById(id);
       if (!el) return;
       new Chart(el.getContext('2d'), {
         type: 'bar',
-        data: { labels, datasets: [{ data, backgroundColor: colors, borderRadius: 6, borderSkipped: false }] },
+        data: { labels, datasets: [{ data, backgroundColor: colors, borderRadius: 6, borderSkipped: false, datalabels: true }] },
         options: {
           responsive: true, maintainAspectRatio: false,
-          scales: { y: { beginAtZero: true, ticks: { callback: v => v + '%' } } },
-          plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ctx.parsed.y + '%' } } }
+          scales: { y: { beginAtZero: true, ticks: { callback: v => v + unit } } },
+          plugins: {
+            legend: { display: false },
+            tooltip: { callbacks: { label: ctx => (ctx.parsed.y ?? 0) + unit } },
+          }
         }
       });
     }
 
-    document.addEventListener('DOMContentLoaded', () => {
+    window.addEventListener('load', () => {
       const searchInput = document.getElementById('searchBox');
       const wardSelect = document.getElementById('wardSelect');
       const langSel = document.getElementById('langSelect');
@@ -894,7 +872,7 @@
         applyLanguage(langSel.value || 'en');
         setTimeout(() => setLanguageViaGoogle(langSel.value || 'en'), 500);
       }
-      initPollCharts();
+      setTimeout(initPollCharts, 0);
       updateCounts();
       renderCandidates();
     });
