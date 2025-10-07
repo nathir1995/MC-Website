@@ -651,6 +651,14 @@
       if (!c.bullets && bulletsMap[c.name]) c.bullets = bulletsMap[c.name];
     }
 
+    // Ensure placeholders for any missing bios/bullets
+    for (const c of candidates) {
+      if (!Array.isArray(c.bullets) || c.bullets.length === 0) {
+        c.bullets = [c.issue1 || 'TBD', c.issue2 || 'TBD', c.issue3 || 'TBD'];
+      }
+      if (!c.bio) c.bio = 'TBD';
+    }
+
     let currentFilter = 'all';
     let currentSearch = '';
     let currentWard = '';
