@@ -97,7 +97,7 @@
     .footer-section a { color: #d1d5db; text-decoration: none; }
     .footer-section a:hover { color: #fff; }
 
-    @media (max-width: 768px) { .header-content { height: 64px; } .nav { display: none; } }
+    @media (max-width: 768px) { .header-content { min-height: 64px; } .nav { display: flex; gap: 12px; flex-wrap: wrap; } }
   </style>
 </head>
 <body>
@@ -421,11 +421,68 @@
       XLSX.writeFile(wb, 'Calgary_2025_Municipal_Election_Candidates.xlsx');
     }
 
+    // --- Simple i18n support for UI chrome (fallback to English) ---
+    const RTL_LANGS = new Set(['ar','ur','fa','ps','dari']);
+    const i18n = {
+      en: {
+        title: 'Calgary Election 2025',
+        subtitle: 'Comprehensive Candidate Tracker - Election Day: October 20, 2025',
+        searchPlaceholder: 'Search by name or party...',
+        filters: { all: 'All', mayor: 'Mayor', councillor: 'Councillor', cbe: 'CBE', ccsd: 'CCSD' },
+        download: '📥 Download Excel (.xlsx)'
+      },
+      fr: {
+        title: 'Élection de Calgary 2025',
+        subtitle: 'Suivi complet des candidats - Jour du scrutin : 20 octobre 2025',
+        searchPlaceholder: 'Rechercher par nom ou parti...',
+        filters: { all: 'Tous', mayor: 'Maire', councillor: 'Conseiller', cbe: 'CBE', ccsd: 'CCSD' },
+        download: '📥 Télécharger Excel (.xlsx)'
+      },
+      ar: {
+        title: 'انتخابات كالغاري 2025',
+        subtitle: 'متابعة شاملة للمرشحين - يوم الاقتراع: 20 أكتوبر 2025',
+        searchPlaceholder: 'ابحث بالاسم أو الحزب...',
+        filters: { all: 'الكل', mayor: 'العمدة', councillor: 'المستشار', cbe: 'CBE', ccsd: 'CCSD' },
+        download: '📥 تنزيل Excel (.xlsx)'
+      }
+    };
+
+    function applyLanguage(lang) {
+      const dict = i18n[lang] || i18n.en;
+      document.documentElement.lang = lang;
+      document.documentElement.dir = RTL_LANGS.has(lang) ? 'rtl' : 'ltr';
+      const titleEl = document.querySelector('.title');
+      const subtitleEl = document.querySelector('.subtitle');
+      const searchEl = document.getElementById('searchBox');
+      const dlBtn = document.querySelector('.download-btn');
+      if (titleEl) titleEl.textContent = dict.title;
+      if (subtitleEl) subtitleEl.textContent = dict.subtitle;
+      if (searchEl) searchEl.placeholder = dict.searchPlaceholder;
+      if (dlBtn) dlBtn.textContent = dict.download;
+      // Update filter labels but keep counts
+      const map = [
+        { sel: '.filter-btn.all', key: 'all', countId: 'countAll' },
+        { sel: '.filter-btn.mayor', key: 'mayor', countId: 'countMayor' },
+        { sel: '.filter-btn.councillor', key: 'councillor', countId: 'countCouncillor' },
+        { sel: '.filter-btn.cbe', key: 'cbe', countId: 'countCBE' },
+        { sel: '.filter-btn.ccsd', key: 'ccsd', countId: 'countCCSD' }
+      ];
+      map.forEach(({ sel, key, countId }) => {
+        const btn = document.querySelector(sel);
+        if (btn) btn.innerHTML = `${dict.filters[key]} (<span id="${countId}">${document.getElementById(countId)?.textContent || '0'}</span>)`;
+      });
+    }
+
     document.addEventListener('DOMContentLoaded', () => {
       const searchInput = document.getElementById('searchBox');
       const wardSelect = document.getElementById('wardSelect');
+      const langSel = document.getElementById('langSelect');
       searchInput.addEventListener('input', (e) => { currentSearch = e.target.value; renderCandidates(); });
       wardSelect.addEventListener('change', (e) => { currentWard = e.target.value; renderCandidates(); });
+      if (langSel) {
+        langSel.addEventListener('change', (e) => { applyLanguage(e.target.value); });
+        applyLanguage(langSel.value || 'en');
+      }
       updateCounts();
       renderCandidates();
     });
