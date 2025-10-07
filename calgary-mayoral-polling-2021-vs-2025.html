@@ -32,6 +32,15 @@
     .table-wrapper { overflow:auto; border:1px solid var(--color-gray-200); border-radius: 10px; }
     #pollingTrendsPlot { width:100%; height:460px; }
     .section-title { font-weight:800; margin: 20px 0 8px; }
+    .profiles-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap:16px; margin-top: 8px; }
+    .profile-card { background:#fff; border:1px solid var(--color-gray-200); border-radius:10px; padding:14px; }
+    .profile-card h4 { font-size:16px; margin:0 0 8px; }
+    .profile-card .role { color:#6b7280; font-size:12px; margin-bottom: 8px; }
+    .profile-card .kv { margin:6px 0; }
+    .profile-card .kv strong { color:#374151; }
+    .spectrum-table { width:100%; border-collapse: collapse; }
+    .spectrum-table th, .spectrum-table td { border:1px solid var(--color-gray-200); padding:10px 12px; font-size:14px; }
+    .spectrum-table thead th { background:#f9fafb; text-align:left; }
     .legend { display:flex; gap:12px; align-items:center; margin: 8px 0 0; }
     .legend .item { display:inline-flex; align-items:center; gap:8px; color:#374151; font-size:13px; }
     .legend .swatch { width:12px; height:12px; border-radius:3px; display:inline-block; }
@@ -199,6 +208,87 @@
         <li>Sharp could overperform if undecided voters swing her way.</li>
         <li>Undecided bloc is the kingmaker—focus on mobilization and persuasion.</li>
       </ul>
+      
+      <h3 class="section-title">🧠 Candidate Profiles & Ideological Landscape</h3>
+      <div class="profiles-grid">
+        <div class="profile-card">
+          <h4>Jyoti Gondek</h4>
+          <div class="role">Incumbent Mayor • Independent</div>
+          <div class="kv"><strong>Ideology:</strong> Centrist‑progressive; urbanist; pro‑density; equity‑focused.</div>
+          <div class="kv"><strong>Political alignment:</strong> Independent; aligned with progressive municipal policy.</div>
+          <div class="kv"><strong>Community engagement:</strong> Emphasis on inclusion, anti‑racism, and equity initiatives.</div>
+          <div class="kv"><strong>Background:</strong> Former sociologist and academic; Ward 3 councillor; supports climate action and planning reform.</div>
+          <div class="kv"><strong>2025 positioning:</strong> Rejects municipal party politics as harmful to local representation. [cbc.ca]</div>
+        </div>
+        <div class="profile-card">
+          <h4>Jeromy Farkas</h4>
+          <div class="role">Former Ward 11 Councillor • Independent</div>
+          <div class="kv"><strong>Ideology:</strong> Fiscal conservative; populist leanings; law‑and‑order focused.</div>
+          <div class="kv"><strong>Political alignment:</strong> Independent; ideologically close to UCP/ABC values.</div>
+          <div class="kv"><strong>Community engagement:</strong> Emphasizes universal policies over targeted equity.</div>
+          <div class="kv"><strong>Background:</strong> Ex‑councillor; former CEO, Glenbow Ranch Provincial Park; opposes tax increases; budget restraint.</div>
+          <div class="kv"><strong>2025 platform:</strong> “A household you can afford, jobs you can count on, safe streets.” [calgary.citynews.ca]</div>
+        </div>
+        <div class="profile-card">
+          <h4>Jeff Davison</h4>
+          <div class="role">Former Ward 6 Councillor • Independent (ABC endorsed)</div>
+          <div class="kv"><strong>Ideology:</strong> Moderate conservative; pro‑business; pragmatic.</div>
+          <div class="kv"><strong>Political alignment:</strong> Independent; endorsed by A Better Calgary (ABC).</div>
+          <div class="kv"><strong>Community engagement:</strong> Inclusive economic opportunity; less equity‑specific focus.</div>
+          <div class="kv"><strong>Background:</strong> CEO, Prostate Cancer Centre; experience in energy, tech, creative industries.</div>
+          <div class="kv"><strong>Platform:</strong> Safety, affordability, innovation, responsive government. [calgary.citynews.ca]</div>
+        </div>
+        <div class="profile-card">
+          <h4>Sonya Sharp</h4>
+          <div class="role">Ward 1 Councillor • Communities First Party</div>
+          <div class="kv"><strong>Ideology:</strong> Community‑focused conservatism; pro‑police; anti‑blanket rezoning.</div>
+          <div class="kv"><strong>Political alignment:</strong> Communities First Party; local control and fiscal restraint.</div>
+          <div class="kv"><strong>Community engagement:</strong> Endorsed by CPS union; less emphasis on targeted equity platforms.</div>
+          <div class="kv"><strong>Background:</strong> Elected 2021; opposes city‑wide zoning changes; supports neighbourhood autonomy.</div>
+          <div class="kv"><strong>2025 positioning:</strong> Rising conservative voice with grassroots appeal. [en.wikipedia.org]</div>
+        </div>
+        <div class="profile-card">
+          <h4>Brian Thiessen</h4>
+          <div class="role">Lawyer • The Calgary Party</div>
+          <div class="kv"><strong>Ideology:</strong> Libertarian‑leaning conservatism; pro‑business; anti‑regulation.</div>
+          <div class="kv"><strong>Political alignment:</strong> The Calgary Party; deregulation and tax cuts.</div>
+          <div class="kv"><strong>Community engagement:</strong> Limited public engagement on equity‑specific issues.</div>
+          <div class="kv"><strong>Background:</strong> Calgary‑based lawyer; new to electoral politics.</div>
+          <div class="kv"><strong>Platform:</strong> Reduce government interference; promote economic freedom. [en.wikipedia.org]</div>
+        </div>
+        <div class="profile-card">
+          <h4>Sarah Elder</h4>
+          <div class="role">Political Entrepreneur • Independent</div>
+          <div class="kv"><strong>Ideology:</strong> Anti‑establishment progressive; participatory democracy advocate.</div>
+          <div class="kv"><strong>Political alignment:</strong> Independent; grassroots, multi‑partisan approach.</div>
+          <div class="kv"><strong>Community engagement:</strong> Inclusion, civic engagement, small business support.</div>
+          <div class="kv"><strong>Background:</strong> Former BC political staffer; founder of Madame Premier.</div>
+          <div class="kv"><strong>Platform:</strong> Inclusive governance, repeal blanket rezoning, support small business. [calgary.citynews.ca]</div>
+        </div>
+      </div>
+
+      <h3 class="section-title">🧭 Ideological Spectrum Summary</h3>
+      <div class="table-wrapper">
+      <table class="spectrum-table">
+        <thead>
+          <tr>
+            <th>Candidate</th>
+            <th>Alignment</th>
+            <th>Party affiliation</th>
+            <th>Community engagement</th>
+            <th>Key themes</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>Gondek</td><td>Progressive</td><td>Independent</td><td>Strong</td><td>Equity, climate, urban reform</td></tr>
+          <tr><td>Farkas</td><td>Conservative</td><td>Independent</td><td>Moderate</td><td>Fiscal restraint, safety</td></tr>
+          <tr><td>Davison</td><td>Moderate Right</td><td>ABC endorsed</td><td>Moderate</td><td>Innovation, affordability</td></tr>
+          <tr><td>Sharp</td><td>Conservative</td><td>Communities First</td><td>Limited</td><td>Local control, anti‑rezoning</td></tr>
+          <tr><td>Thiessen</td><td>Libertarian Right</td><td>The Calgary Party</td><td>Limited</td><td>Deregulation, tax cuts</td></tr>
+          <tr><td>Elder</td><td>Progressive</td><td>Independent</td><td>Strong</td><td>Inclusion, civic engagement</td></tr>
+        </tbody>
+      </table>
+      </div>
     </div>
   </div>
 </body>
