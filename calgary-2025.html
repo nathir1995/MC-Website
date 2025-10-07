@@ -21,8 +21,6 @@
   <link href="assets/vendor/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
   <link href="assets/vendor/aos/aos.css" rel="stylesheet">
 
-  <!-- XLSX for export -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
   <style>
     :root {
@@ -187,7 +185,7 @@
         <button class="filter-btn ccsd" onclick="setFilter('ccsd')">CCSD (<span id="countCCSD">0</span>)</button>
       </div>
 
-      <button class="download-btn" onclick="downloadExcel()">📥 Download Excel (.xlsx)</button>
+      
     </div>
 
     <div id="results"></div>
@@ -397,29 +395,7 @@
       }).join('');
     }
 
-    function downloadExcel() {
-      const ws = XLSX.utils.json_to_sheet(candidates.map(c => ({
-        'Position Type': c.position,
-        'Ward': c.ward,
-        'Candidate Name': c.name,
-        'Party': c.party,
-        'Status': c.status,
-        'Top Issue 1': c.issue1,
-        'Top Issue 2': c.issue2,
-        'Top Issue 3': c.issue3,
-        'Pro-Palestine Sentiment/Position': 'Not addressed - Municipal jurisdiction',
-        'Additional Notes': c.notes
-      })));
-
-      ws['!cols'] = [
-        {wch:15},{wch:15},{wch:25},{wch:20},{wch:12},
-        {wch:35},{wch:35},{wch:35},{wch:40},{wch:60}
-      ];
-
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, 'Calgary 2025 Election');
-      XLSX.writeFile(wb, 'Calgary_2025_Municipal_Election_Candidates.xlsx');
-    }
+    
 
     // --- Simple i18n support for UI chrome (fallback to English) ---
     const RTL_LANGS = new Set(['ar','ur','fa','ps','dari']);
