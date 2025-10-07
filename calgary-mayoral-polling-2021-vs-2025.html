@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta content="width=device-width, initial-scale=1.0" name="viewport">
+  <title>Calgary Mayoral Polling Comparison: 2021 vs 2025</title>
+  <meta name="description" content="Comparative analysis of Calgary mayoral polling trends in 2021 vs 2025, with charts and key insights.">
+  <link href="assets/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+  <link href="assets/vendor/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
+  <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+  <style>
+    :root {
+      --color-gray-50:#f9fafb; --color-gray-200:#e5e7eb; --color-gray-600:#4b5563; --color-gray-900:#111827;
+      --color-primary-50:#eff6ff; --color-primary-600:#2563eb; --radius-lg:12px;
+    }
+    body { font-family: Inter, system-ui, sans-serif; background: var(--color-gray-50); color: var(--color-gray-900); }
+    .container { max-width: 980px; margin: 32px auto; padding: 0 16px; }
+    .card { background: #fff; border: 1px solid var(--color-gray-200); border-radius: var(--radius-lg); box-shadow: 0 2px 8px rgba(0,0,0,.06); padding: 24px; }
+    .title { font-weight: 800; font-size: 28px; margin-bottom: 8px; }
+    .meta { color: var(--color-gray-600); font-size: 14px; margin-bottom: 16px; display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+    .subtitle { color:#374151; margin-bottom: 20px; }
+    .compare-table { width:100%; border-collapse: collapse; margin: 12px 0 16px; }
+    .compare-table th, .compare-table td { border:1px solid var(--color-gray-200); padding:10px 12px; font-size:14px; }
+    .compare-table thead th { background:#f9fafb; text-align:left; font-weight:700; }
+    #pollingTrendsPlot { width:100%; height:460px; }
+    .section-title { font-weight:800; margin: 20px 0 8px; }
+    .back-link { display:inline-flex; gap:8px; align-items:center; text-decoration:none; color:#1f2937; margin-bottom:16px; }
+    .back-link:hover { color: var(--color-primary-600); }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <a class="back-link" href="blog.html"><i class="bi bi-arrow-left"></i> Back to Blog</a>
+    <div class="card">
+      <div class="title">Calgary Mayoral Polling Comparison: 2021 vs 2025</div>
+      <div class="meta">
+        <span><i class="bi bi-calendar"></i> October 6, 2025</span>
+        <span><i class="bi bi-person"></i> Nazer</span>
+      </div>
+      <p class="subtitle">Here’s a comparative analysis of pre-election polling trends in Calgary’s 2021 vs. 2025 mayoral races, highlighting shifts in voter sentiment, candidate dynamics, and the political landscape.</p>
+
+      <h3 class="section-title">🗳️ Polling Comparison: 2021 vs. 2025</h3>
+      <table class="compare-table">
+        <thead>
+          <tr>
+            <th>Candidate</th>
+            <th>2021 Polling (Sept–Oct)</th>
+            <th>2025 Polling (Sept–Oct)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>Jyoti Gondek</td><td>40% (CBC/Janet Brown)</td><td>14–16% (Leger, Think HQ)</td></tr>
+          <tr><td>Jeromy Farkas</td><td>32%</td><td>16–34% (Cardinal, Leger)</td></tr>
+          <tr><td>Jeff Davison</td><td>11%</td><td>8–14%</td></tr>
+          <tr><td>Sonya Sharp</td><td>N/A</td><td>10–17%</td></tr>
+          <tr><td>Brian Thiessen</td><td>N/A</td><td>3–4%</td></tr>
+          <tr><td>Undecided Voters</td><td>~33%</td><td>27–46%</td></tr>
+        </tbody>
+      </table>
+
+      <div id="pollingTrendsPlot"></div>
+      <script>
+        (function(){
+          if (!window.Plotly) return;
+          const data = [
+            { marker: { color: 'blue' }, name: '2021', x: ['Jyoti Gondek','Jeromy Farkas','Jeff Davison','Sonya Sharp','Brian Thiessen'], y: [40,32,11,0,0], type: 'bar' },
+            { marker: { color: 'orange' }, name: '2025', x: ['Jyoti Gondek','Jeromy Farkas','Jeff Davison','Sonya Sharp','Brian Thiessen'], y: [15,30,11,14,4], type: 'bar' }
+          ];
+          const layout = {
+            template: {
+              data: {
+                histogram2dcontour: [{ type: 'histogram2dcontour', colorbar: { outlinewidth: 0, ticks: '' }, colorscale: [[0,'#0d0887'],[0.1111111111111111,'#46039f'],[0.2222222222222222,'#7201a8'],[0.3333333333333333,'#9c179e'],[0.4444444444444444,'#bd3786'],[0.5555555555555556,'#d8576b'],[0.6666666666666666,'#ed7953'],[0.7777777777777778,'#fb9f3a'],[0.8888888888888888,'#fdca26'],[1,'#f0f921']] }],
+                choropleth: [{ type: 'choropleth', colorbar: { outlinewidth: 0, ticks: '' } }],
+                histogram2d: [{ type: 'histogram2d', colorbar: { outlinewidth: 0, ticks: '' }, colorscale: [[0,'#0d0887'],[0.1111111111111111,'#46039f'],[0.2222222222222222,'#7201a8'],[0.3333333333333333,'#9c179e'],[0.4444444444444444,'#bd3786'],[0.5555555555555556,'#d8576b'],[0.6666666666666666,'#ed7953'],[0.7777777777777778,'#fb9f3a'],[0.8888888888888888,'#fdca26'],[1,'#f0f921']] }],
+                heatmap: [{ type: 'heatmap', colorbar: { outlinewidth: 0, ticks: '' }, colorscale: [[0,'#0d0887'],[0.1111111111111111,'#46039f'],[0.2222222222222222,'#7201a8'],[0.3333333333333333,'#9c179e'],[0.4444444444444444,'#bd3786'],[0.5555555555555556,'#d8576b'],[0.6666666666666666,'#ed7953'],[0.7777777777777778,'#fb9f3a'],[0.8888888888888888,'#fdca26'],[1,'#f0f921']] }],
+                contourcarpet: [{ type: 'contourcarpet', colorbar: { outlinewidth: 0, ticks: '' } }],
+                contour: [{ type: 'contour', colorbar: { outlinewidth: 0, ticks: '' }, colorscale: [[0,'#0d0887'],[0.1111111111111111,'#46039f'],[0.2222222222222222,'#7201a8'],[0.3333333333333333,'#9c179e'],[0.4444444444444444,'#bd3786'],[0.5555555555555556,'#d8576b'],[0.6666666666666666,'#ed7953'],[0.7777777777777778,'#fb9f3a'],[0.8888888888888888,'#fdca26'],[1,'#f0f921']] }],
+                surface: [{ type: 'surface', colorbar: { outlinewidth: 0, ticks: '' }, colorscale: [[0,'#0d0887'],[0.1111111111111111,'#46039f'],[0.2222222222222222,'#7201a8'],[0.3333333333333333,'#9c179e'],[0.4444444444444444,'#bd3786'],[0.5555555555555556,'#d8576b'],[0.6666666666666666,'#ed7953'],[0.7777777777777778,'#fb9f3a'],[0.8888888888888888,'#fdca26'],[1,'#f0f921']] }],
+                mesh3d: [{ type: 'mesh3d', colorbar: { outlinewidth: 0, ticks: '' } }],
+                scatter: [{ fillpattern: { fillmode: 'overlay', size: 10, solidity: 0.2 }, type: 'scatter' }],
+                parcoords: [{ type: 'parcoords', line: { colorbar: { outlinewidth: 0, ticks: '' } } }],
+                scatterpolargl: [{ type: 'scatterpolargl', marker: { colorbar: { outlinewidth: 0, ticks: '' } } }],
+                bar: [{ error_x: { color: '#2a3f5f' }, error_y: { color: '#2a3f5f' }, marker: { line: { color: '#E5ECF6', width: 0.5 }, pattern: { fillmode: 'overlay', size: 10, solidity: 0.2 } }, type: 'bar' }],
+                scattergeo: [{ type: 'scattergeo', marker: { colorbar: { outlinewidth: 0, ticks: '' } } }],
+                scatterpolar: [{ type: 'scatterpolar', marker: { colorbar: { outlinewidth: 0, ticks: '' } } }],
+                histogram: [{ marker: { pattern: { fillmode: 'overlay', size: 10, solidity: 0.2 } }, type: 'histogram' }],
+                scattergl: [{ type: 'scattergl', marker: { colorbar: { outlinewidth: 0, ticks: '' } } }],
+                scatter3d: [{ type: 'scatter3d', line: { colorbar: { outlinewidth: 0, ticks: '' } }, marker: { colorbar: { outlinewidth: 0, ticks: '' } } }],
+                scattermap: [{ type: 'scattermap', marker: { colorbar: { outlinewidth: 0, ticks: '' } } }],
+                scattermapbox: [{ type: 'scattermapbox', marker: { colorbar: { outlinewidth: 0, ticks: '' } } }],
+                scatterternary: [{ type: 'scatterternary', marker: { colorbar: { outlinewidth: 0, ticks: '' } } }],
+                scattercarpet: [{ type: 'scattercarpet', marker: { colorbar: { outlinewidth: 0, ticks: '' } } }],
+                carpet: [{ aaxis: { endlinecolor: '#2a3f5f', gridcolor: 'white', linecolor: 'white', minorgridcolor: 'white', startlinecolor: '#2a3f5f' }, baxis: { endlinecolor: '#2a3f5f', gridcolor: 'white', linecolor: 'white', minorgridcolor: 'white', startlinecolor: '#2a3f5f' }, type: 'carpet' }],
+                table: [{ cells: { fill: { color: '#EBF0F8' }, line: { color: 'white' } }, header: { fill: { color: '#C8D4E3' }, line: { color: 'white' } }, type: 'table' }],
+                barpolar: [{ marker: { line: { color: '#E5ECF6', width: 0.5 }, pattern: { fillmode: 'overlay', size: 10, solidity: 0.2 } }, type: 'barpolar' }],
+                pie: [{ automargin: true, type: 'pie' }]
+              },
+              layout: {
+                autotypenumbers: 'strict',
+                colorway: ['#636efa','#EF553B','#00cc96','#ab63fa','#FFA15A','#19d3f3','#FF6692','#B6E880','#FF97FF','#FECB52'],
+                font: { color: '#2a3f5f' },
+                hovermode: 'closest', hoverlabel: { align: 'left' },
+                paper_bgcolor: 'white', plot_bgcolor: '#E5ECF6',
+                polar: { bgcolor: '#E5ECF6', angularaxis: { gridcolor: 'white', linecolor: 'white', ticks: '' }, radialaxis: { gridcolor: 'white', linecolor: 'white', ticks: '' } },
+                ternary: { bgcolor: '#E5ECF6', aaxis: { gridcolor: 'white', linecolor: 'white', ticks: '' }, baxis: { gridcolor: 'white', linecolor: 'white', ticks: '' }, caxis: { gridcolor: 'white', linecolor: 'white', ticks: '' } },
+                coloraxis: { colorbar: { outlinewidth: 0, ticks: '' } },
+                colorscale: {
+                  sequential: [[0,'#0d0887'],[0.1111111111111111,'#46039f'],[0.2222222222222222,'#7201a8'],[0.3333333333333333,'#9c179e'],[0.4444444444444444,'#bd3786'],[0.5555555555555556,'#d8576b'],[0.6666666666666666,'#ed7953'],[0.7777777777777778,'#fb9f3a'],[0.8888888888888888,'#fdca26'],[1,'#f0f921']],
+                  sequentialminus: [[0,'#0d0887'],[0.1111111111111111,'#46039f'],[0.2222222222222222,'#7201a8'],[0.3333333333333333,'#9c179e'],[0.4444444444444444,'#bd3786'],[0.5555555555555556,'#d8576b'],[0.6666666666666666,'#ed7953'],[0.7777777777777778,'#fb9f3a'],[0.8888888888888888,'#fdca26'],[1,'#f0f921']],
+                  diverging: [[0,'#8e0152'],[0.1,'#c51b7d'],[0.2,'#de77ae'],[0.3,'#f1b6da'],[0.4,'#fde0ef'],[0.5,'#f7f7f7'],[0.6,'#e6f5d0'],[0.7,'#b8e186'],[0.8,'#7fbc41'],[0.9,'#4d9221'],[1,'#276419']]
+                },
+                xaxis: { gridcolor: 'white', linecolor: 'white', ticks: '', title: { standoff: 15 }, zerolinecolor: 'white', automargin: true, zerolinewidth: 2 },
+                yaxis: { gridcolor: 'white', linecolor: 'white', ticks: '', title: { standoff: 15 }, zerolinecolor: 'white', automargin: true, zerolinewidth: 2 },
+                scene: {
+                  xaxis: { backgroundcolor: '#E5ECF6', gridcolor: 'white', linecolor: 'white', showbackground: true, ticks: '', zerolinecolor: 'white', gridwidth: 2 },
+                  yaxis: { backgroundcolor: '#E5ECF6', gridcolor: 'white', linecolor: 'white', showbackground: true, ticks: '', zerolinecolor: 'white', gridwidth: 2 },
+                  zaxis: { backgroundcolor: '#E5ECF6', gridcolor: 'white', linecolor: 'white', showbackground: true, ticks: '', zerolinecolor: 'white', gridwidth: 2 }
+                },
+                shapedefaults: { line: { color: '#2a3f5f' } },
+                annotationdefaults: { arrowcolor: '#2a3f5f', arrowhead: 0, arrowwidth: 1 },
+                geo: { bgcolor: 'white', landcolor: '#E5ECF6', subunitcolor: 'white', showland: true, showlakes: true, lakecolor: 'white' },
+                title: { x: 0.05 }, mapbox: { style: 'light' }
+              }
+            },
+            title: { text: 'Polling Trends for Calgary Mayoral Candidates (2021 vs 2025)' },
+            xaxis: { title: { text: 'Candidate' } },
+            yaxis: { title: { text: 'Polling Percentage (%)' } },
+            barmode: 'group'
+          };
+          Plotly.newPlot('pollingTrendsPlot', data, layout, { displayModeBar: false, responsive: true });
+        })();
+      </script>
+
+      <h3 class="section-title">🔍 Key Observations</h3>
+      <ol>
+        <li><strong>Farkas’s Resurgence</strong>
+          <ul>
+            <li>In 2021, Farkas was a strong contender but lost to Gondek.</li>
+            <li>In 2025, he leads most polls, with up to 34% support in Cardinal Research’s September poll (<a href="https://cardinalresearch.ca/" target="_blank" rel="noopener">cardinalresearch.ca</a>).</li>
+            <li>He retains 60% of his 2021 voters and has gained support from Gondek and Davison’s previous bases.</li>
+          </ul>
+        </li>
+        <li><strong>Gondek’s Decline</strong>
+          <ul>
+            <li>From ~40% in 2021 to ~14–16% in 2025.</li>
+            <li>Lower approval than rivals like Farkas and Davison (<a href="https://www.leger360.com/" target="_blank" rel="noopener">leger360.com</a>).</li>
+            <li>Perception of Calgary on the wrong track is a headwind.</li>
+          </ul>
+        </li>
+        <li><strong>Emergence of Sonya Sharp</strong>
+          <ul>
+            <li>New 2025 contender at 10–17% with institutional backing.</li>
+          </ul>
+        </li>
+        <li><strong>High Undecided Rate</strong>
+          <ul>
+            <li>Up to 46% undecided in 2025 vs ~33% in 2021.</li>
+            <li>Signals potential for late shifts.</li>
+          </ul>
+        </li>
+        <li><strong>Top Issues in 2025</strong>
+          <ul>
+            <li>Lower taxes, fiscal restraint, poverty reduction dominate (<a href="https://www.leger360.com/" target="_blank" rel="noopener">leger360.com</a>).</li>
+          </ul>
+        </li>
+      </ol>
+
+      <h3 class="section-title">📈 Strategic Implications</h3>
+      <ul>
+        <li>Farkas is well‑positioned but must consolidate undecided voters.</li>
+        <li>Gondek must reframe incumbency as an asset to recover support.</li>
+        <li>Sharp could overperform if undecided voters swing her way.</li>
+        <li>Undecided bloc is the kingmaker—focus on mobilization and persuasion.</li>
+      </ul>
+    </div>
+  </div>
+</body>
+</html>
