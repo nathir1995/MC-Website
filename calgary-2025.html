@@ -97,7 +97,9 @@
     .election .analysis-link.primary { background: var(--color-primary-50); color: #1d4ed8; border-color: #bfdbfe; }
     /* Advance voting info card */
     .info-section { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); margin-bottom: 20px; }
-    .info-section h4 { margin: 0 0 8px; font-size: 18px; font-weight: 800; color: #111827; }
+    .info-section h4 { margin: 0; font-size: 18px; font-weight: 900; color: #111827; }
+    .info-meta { display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0 12px; }
+    .chip { display: inline-flex; align-items: center; gap: 6px; background: #eef2ff; color: #1e3a8a; border: 1px solid #c7d2fe; padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; }
     .info-section p, .info-section li { color: #374151; font-size: 14px; }
     .info-columns { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; margin-top: 8px; }
     .info-card { border: 1px solid #e5e7eb; border-radius: 10px; padding: 12px; background: #fafafa; }
@@ -213,7 +215,11 @@
       </div>
 
       <div class="info-section">
-        <h4>🗳️ Advance Voting (Oct 6–11, 2025) — 10:00 a.m. to 7:00 p.m.</h4>
+        <h4>🗳️ Advance Voting</h4>
+        <div class="info-meta">
+          <span class="chip"><i class="bi bi-calendar"></i> Oct 6–11, 2025</span>
+          <span class="chip"><i class="bi bi-clock"></i> 10:00 a.m.–7:00 p.m.</span>
+        </div>
         <div class="info-columns">
           <div class="info-card">
             <h5>Key Locations (any station ok)</h5>
