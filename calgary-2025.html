@@ -332,6 +332,325 @@
       {position:'CCSD Trustee',ward:'13 & 14',name:'Elected by Acclamation',party:'N/A',issue1:'N/A',issue2:'N/A',issue3:'N/A',status:'Acclamation',notes:'No opposition'}
     ];
 
+    // Enriched bullets per candidate from provided source
+    const bulletsMap = {
+      'Dan Olesen': [
+        'People‑first leadership at city hall',
+        'Support seniors, students and small businesses',
+        'Safety via prevention, mental health and transit upgrades'
+      ],
+      'Joey Nowak': [
+        'Evidence‑based decisions on growth and services',
+        'Improve transit options and reliability',
+        'Foster people‑focused growth and thriving communities'
+      ],
+      'Kim Tyers': [
+        'Lower taxes and strong services',
+        'Safe communities with practical enforcement',
+        'Commonsense, accountable government'
+      ],
+      'Shaukat Chaudhry': [
+        'Reduce property taxes for families',
+        'Expand core infrastructure responsibly',
+        'Amplify residents’ voice at city hall'
+      ],
+      'John Garden': [
+        'Rescind blanket rezoning',
+        'Freeze taxes for four years',
+        'Preserve character of existing communities'
+      ],
+      'Jennifer Wyness': [
+        'Enhance community services and recreation',
+        'Increase transparency and accountability',
+        'Practical fixes like bikes on CTrains'
+      ],
+      'Rajesh Angral': [
+        'Increase police presence in hotspots',
+        'Expand neighbourhood watch & patrols',
+        'Improve bus frequency and coverage'
+      ],
+      'Atul Chauhan': [
+        'Safer neighbourhoods through better policing & design',
+        'Improve public transit and infrastructure',
+        'Support small business and job growth'
+      ],
+      'Danny Ng': [
+        'Consistent city services residents can rely on',
+        'Public progress dashboard to track results',
+        'Better snow clearing and winter response'
+      ],
+      'Siraaj Shah': [
+        'Advance Teal Line LRT from airport to North Pointe',
+        'Freeze increases to municipal utility fees',
+        'Champion housing advocacy and supply'
+      ],
+      'Andrew Yule': [
+        'Declare a north‑central transit emergency',
+        'Extend Green Line north',
+        'Build 144 Avenue BRT link'
+      ],
+      'DJ Kelly': [
+        'Bring people together to solve problems',
+        'Streamline city operations and cut red tape',
+        'Reduce inefficiencies to protect services'
+      ],
+      'Jeremy Wong': [
+        'Repeal blanket rezoning',
+        'Invest in Ward 4 recreation facilities',
+        'Strengthen relationships between law enforcement and residents'
+      ],
+      'Sheldon Yakiwchuk': [
+        'Freeze property taxes for four years',
+        'End spending on non‑core projects',
+        'Refocus council on core responsibilities'
+      ],
+      'Raj Dhaliwal': [
+        'Continue NE infrastructure projects & safety',
+        'Improve transit and road capacity',
+        'Deliver ward‑level progress residents can see'
+      ],
+      'Gurpreet Dhillon': [
+        'Crime prevention and targeted enforcement',
+        'Ensure resources for fast‑growing communities',
+        'Better access to transit'
+      ],
+      'Tariq Khan': [
+        'Respect taxpayer dollars—cut waste',
+        'Free transit for seniors and youth',
+        'Prioritize core municipal projects over megaprojects'
+      ],
+      'Harneet (Reet) Mushiana': [
+        'Equal transit investment for Ward 5',
+        'Affordable housing access',
+        'Safer communities with prevention & support'
+      ],
+      'Jigar Patel': [
+        'Upgrade local infrastructure',
+        'Fight for fair NE investment',
+        'Support small business and transparency'
+      ],
+      'Harry Singh Purba': [
+        'Stronger law & order and cleanliness',
+        'Address neighbourhood neglect',
+        'Promote hail‑resistant building materials'
+      ],
+      'Aryan Sadat': [
+        'Data‑backed solutions to city problems',
+        'Fix crumbling infrastructure',
+        'Reduce taxes and wasteful spending'
+      ],
+      'Joanne Birce': [
+        'Keep taxes low and services strong',
+        'Invest in infrastructure and transit',
+        'Action‑oriented, community‑driven leadership'
+      ],
+      'John Pantazopoulos': [
+        'Fiscal responsibility across city operations',
+        'Targeted growth—not blanket upzoning',
+        'Safer streets and neighbourhoods'
+      ],
+      'Inam Teja': [
+        'Expand affordable and diverse housing options',
+        'Improve transit connections between communities',
+        'Support evidence‑based community development'
+      ],
+      'Jeff Watson': [
+        'Repeal blanket rezoning',
+        'Increase transparency & accountability',
+        'Refocus city on the basics'
+      ],
+      'Greg Amoruso': [
+        'No donations to avoid conflicts',
+        'Oppose blanket rezoning causing frustration',
+        'Freeze mayor/council compensation'
+      ],
+      'Anthony Ascue': [
+        'Back small business and entrepreneurs',
+        'Cut spending that doesn’t serve residents',
+        'Common‑sense, results‑driven governance'
+      ],
+      'Myke Atkinson': [
+        'Pursue free‑fare transit',
+        'Stop subsidizing costly sprawl',
+        'Reinvest in inner‑city communities'
+      ],
+      'David Barrett': [
+        'Real transportation choice beyond driving',
+        'Invest in parks and recreation',
+        'Curb urban sprawl with smart growth'
+      ],
+      'Heather McRae': [
+        'Immediate investment from pipes to rec centres',
+        'Advance Green Line delivery',
+        'Energize downtown & neighbourhood economies'
+      ],
+      'Terry Wong': [
+        'Experienced leadership to deliver results',
+        'Rebuild trust and functionality on council',
+        'Focus on practical outcomes'
+      ],
+      'Gary Bobrovitz': [
+        'Improve public safety',
+        'Reduce homelessness with effective supports',
+        'Back local businesses and main streets'
+      ],
+      'Miguel Cortines': [
+        'Improve public services city‑wide',
+        'Promote responsible, inclusive growth',
+        'Deepen community engagement and economic vibrancy'
+      ],
+      'Kent Hehr': [
+        'Champion innovative housing models',
+        'Pursue sustainable growth',
+        'Revitalize downtown'
+      ],
+      'Josie Kirkpatrick': [
+        'Oppose blanket rezoning & rent‑driven upcharges',
+        'Clean parks and safer transit',
+        'Fiscally conservative budgeting'
+      ],
+      'Nathaniel Schmidt': [
+        'Improve affordability and housing access',
+        'Revitalize downtown with arts & culture',
+        'Strengthen local, accountable government'
+      ],
+      'Cornelia Wiebe': [
+        'Recovery‑focused approach to homelessness',
+        'Repeal blanket rezoning',
+        'Support inclusive, evidence‑based development'
+      ],
+      'Harrison Clark': [
+        'Affordability & transparent decision‑making',
+        'Protect heritage and main‑street character',
+        'Bridge connectivity across Deerfoot Trail'
+      ],
+      'Tony Dinh': [
+        'Accountability and smart spending',
+        'Prioritize core municipal services',
+        'Increase affordable housing supply'
+      ],
+      'Gar Gar': [
+        'Focus on core services and affordability',
+        'Elevate community voices at city hall',
+        'Support youth engagement and safety'
+      ],
+      'Alison Karim-McSwiney': [
+        'Increase affordable housing units',
+        'Create safer streets with targeted measures',
+        'Temporary tax discounts for building upgrades'
+      ],
+      'Ariana Kippers': [
+        'Revitalize neighbourhoods in Ward 9',
+        'Transparent, accessible engagement',
+        'Education and community connection initiatives'
+      ],
+      'Marina Ortman': [
+        'Empower residents with tools and information',
+        'Build safe, cohesive communities',
+        'Ensure transparent local government'
+      ],
+      'Nickie Brockhoff': [
+        'Bring an authentic community voice to council',
+        'Strengthen community associations and services',
+        'Practical, grassroots solutions'
+      ],
+      'Andre Chabot': [
+        'Proven experience on council',
+        'Focus on core services and maintenance',
+        'Pragmatic approach rooted in community needs'
+      ],
+      'Mahmoud Mourra': [
+        'Equal investment across Ward 10',
+        'Fairness and family‑focused values',
+        'Safer streets and responsive services'
+      ],
+      'Kourtney Penner': [
+        'Expand free transit for kids under 12',
+        'Deliver on first‑term projects and services',
+        'Accountable leadership across partisan lines'
+      ],
+      'Rob Ward': [
+        'Balanced redevelopment that respects community',
+        'Common‑sense governance',
+        'Cut wasteful city projects'
+      ],
+      'Alex Williams': [
+        'Safer, more accessible and efficient transit',
+        'Deliver on the basics residents need',
+        'Pragmatic, service‑first city hall'
+      ],
+      'Shane Byciuk': [
+        'Action‑based, community‑first leadership',
+        'Improve essential services in Ward 12',
+        'Responsible taxation and spending'
+      ],
+      'Sarah Ferguson': [
+        'Enhance engagement and public spaces',
+        'Responsive, ward‑level governance',
+        'Support Green Line and local amenities'
+      ],
+      'Mike Jamieson': [
+        'Refocus on core city services',
+        'Eliminate pet projects and ideologies',
+        'Responsible, transparent budgeting'
+      ],
+      'Raj-Kumar Khuttan': [
+        'Improve roads and transit',
+        'Add dog parks and community amenities',
+        'Champion police officer safety'
+      ],
+      'Dan McLean': [
+        'Keep taxes low and support businesses',
+        'Prioritize community needs',
+        'Hands‑on, accessible representation'
+      ],
+      'Elliot Weinstein': [
+        'Grow local entrepreneurship & jobs',
+        'Drive community development',
+        'Active engagement with residents'
+      ],
+      'Chima Akuchie': [
+        'Make communities accessible and thriving',
+        'Balanced zoning and smart growth',
+        'Advocate for disability inclusion'
+      ],
+      'Erin Averbukh': [
+        'Repeal blanket rezoning city‑wide',
+        'Increase transparency on operating costs',
+        'Expand affordable, accessible recreation'
+      ],
+      'Devin Elkin': [
+        'Maintain aging infrastructure',
+        'Partner with CPS to improve safety',
+        'Improve budgeting and fiscal discipline'
+      ],
+      'Keener Hachey': [
+        'Lower taxes for families',
+        'Conduct organization‑wide review',
+        'Identify and implement wise cuts'
+      ],
+      'Landon Johnston': [
+        'Support seniors and working families',
+        'Repeal blanket rezoning',
+        'Cut red tape for trades and builders'
+      ],
+      'Sunjiv Raval': [
+        'Fair taxes and smarter planning',
+        'Safer communities and better lighting',
+        'Neighbourhood investments residents can see'
+      ],
+      'Ryan Stutt': [
+        'Lower taxes while protecting services',
+        'Address homelessness & addiction with treatment + enforcement',
+        'Long‑term, practical infrastructure planning'
+      ]
+    };
+
+    // Attach enriched bullets where present
+    for (const c of candidates) {
+      if (!c.bullets && bulletsMap[c.name]) c.bullets = bulletsMap[c.name];
+    }
+
     let currentFilter = 'all';
     let currentSearch = '';
     let currentWard = '';
