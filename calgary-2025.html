@@ -480,12 +480,60 @@
       searchInput.addEventListener('input', (e) => { currentSearch = e.target.value; renderCandidates(); });
       wardSelect.addEventListener('change', (e) => { currentWard = e.target.value; renderCandidates(); });
       if (langSel) {
-        langSel.addEventListener('change', (e) => { applyLanguage(e.target.value); });
+        langSel.addEventListener('change', (e) => {
+          const chosen = e.target.value;
+          applyLanguage(chosen);
+          setLanguageViaGoogle(chosen);
+        });
         applyLanguage(langSel.value || 'en');
+        setTimeout(() => setLanguageViaGoogle(langSel.value || 'en'), 500);
       }
       updateCounts();
       renderCandidates();
     });
   </script>
+  <!-- Google Translate (hidden) to translate candidate content and UI -->
+  <div id="google_translate_element" style="display:none;"></div>
+  <script>
+    function googleTranslateElementInit() {
+      if (window.google && window.google.translate) {
+        new google.translate.TranslateElement({
+          pageLanguage: 'en',
+          includedLanguages: 'en,fr,ar,ur,hi,pa,fa,tr,am,ps',
+          autoDisplay: false
+        }, 'google_translate_element');
+      }
+    }
+    function GTranslateFireEvent(el, eventName) {
+      try {
+        if (document.createEvent) {
+          var evObj = document.createEvent('HTMLEvents');
+          evObj.initEvent(eventName, true, true);
+          el.dispatchEvent(evObj);
+        } else if (document.createEventObject) {
+          var evObj = document.createEventObject();
+          el.fireEvent('on' + eventName, evObj);
+        }
+      } catch (e) {}
+    }
+    function doGTranslate(a) {
+      if (a.value) a = a.value;
+      var langPair = a.split('|');
+      var select = document.querySelector('select.goog-te-combo');
+      if (!select) {
+        setTimeout(function(){ doGTranslate(a); }, 500);
+        return;
+      }
+      select.value = langPair[1];
+      GTranslateFireEvent(select, 'change');
+    }
+    function setLanguageViaGoogle(code) {
+      // Map custom options to Google Translate codes
+      var map = { dari: 'fa' };
+      var target = map[code] || code || 'en';
+      doGTranslate('en|' + target);
+    }
+  </script>
+  <script src="https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
 </body>
 </html>
