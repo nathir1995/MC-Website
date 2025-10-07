@@ -54,7 +54,8 @@
 
     /* Election Tracker Scoped Styles */
     .election { max-width: 1200px; margin: 0 auto; padding: 20px; }
-    .election .election-header { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-top: 20px; margin-bottom: 24px; }
+    .election .election-header { background: linear-gradient(135deg, var(--color-primary-50), #ffffff); padding: 30px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border: 1px solid #e5e7eb; margin-top: 20px; margin-bottom: 24px; }
+    .election .header-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 16px; }
     .election .title { font-size: 32px; font-weight: 800; color: #111; margin-bottom: 8px; }
     .election .subtitle { color: #666; margin-bottom: 20px; }
     .election .controls { display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
@@ -89,6 +90,11 @@
     .election .badge.official { background: #10b981; color: white; }
     .election .no-results { text-align: center; padding: 60px; background: white; border-radius: 12px; color: #9ca3af; }
     .election .lang-selector { display: flex; gap: 8px; align-items: center; }
+    .election .side-actions { display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
+    .election .quick-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; justify-content: flex-end; }
+    .election .analysis-link { display: inline-flex; align-items: center; gap: 6px; background: #f3f4f6; color: #1f2937; border: 1px solid #e5e7eb; padding: 8px 12px; border-radius: 999px; text-decoration: none; font-weight: 600; }
+    .election .analysis-link:hover { background: #e5e7eb; }
+    .election .analysis-link.primary { background: var(--color-primary-50); color: #1d4ed8; border-color: #bfdbfe; }
     .election .side-actions { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
     .election .analysis-link { display: inline-flex; align-items: center; gap: 6px; background: #f3f4f6; color: #1f2937; border: 1px solid #e5e7eb; padding: 8px 12px; border-radius: 999px; text-decoration: none; font-weight: 600; }
     .election .analysis-link:hover { background: #e5e7eb; }
@@ -135,10 +141,14 @@
 
   <main class="election">
     <div class="election-header">
-      <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 20px;">
+      <div class="header-top">
         <div>
           <div class="title">Calgary Election 2025</div>
           <div class="subtitle">Comprehensive Candidate Tracker - Election Day: October 20, 2025</div>
+          <div class="quick-actions">
+            <a class="analysis-link primary" href="calgary-mayoral-polling-2021-vs-2025.html" target="_blank" rel="noopener">📊 Mayoral polling analysis</a>
+            <a class="analysis-link" href="calgary-2025-mayoral-analysis.html" target="_blank" rel="noopener">🗳️ Comparative analysis</a>
+          </div>
         </div>
         <div class="side-actions">
           <div class="lang-selector">
@@ -157,12 +167,6 @@
               <option value="dari">دری</option>
             </select>
           </div>
-          <a class="analysis-link" href="calgary-mayoral-polling-2021-vs-2025.html" target="_blank" rel="noopener">
-            📊 Mayoral polling analysis
-          </a>
-          <a class="analysis-link" href="calgary-2025-mayoral-analysis.html" target="_blank" rel="noopener">
-            🗳️ Mayoral race: comparative analysis
-          </a>
         </div>
       </div>
       
