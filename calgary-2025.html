@@ -20,6 +20,7 @@
   <link href="assets/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
   <link href="assets/vendor/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
   <link href="assets/vendor/aos/aos.css" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.min.js"></script>
 
 
   <style>
@@ -89,6 +90,15 @@
     .election .no-results { text-align: center; padding: 60px; background: white; border-radius: 12px; color: #9ca3af; }
     .election .lang-selector { display: flex; gap: 8px; align-items: center; }
 
+    /* Polls */
+    .polls-section { background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); padding: 20px; margin-bottom: 20px; border: 1px solid #e5e7eb; }
+    .poll-header { display:flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 12px; }
+    .poll-title { font-weight: 800; color: #111827; }
+    .poll-meta { color:#6b7280; font-size: 12px; }
+    .poll-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+    .poll-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 12px; min-height: 220px; }
+    .poll-card h5 { margin-bottom: 8px; font-size: 14px; color:#374151; }
+
     /* Footer */
     .footer { background: #111827; color: white; padding: 2rem 0; margin-top: 2rem; }
     .footer-content { max-width: 1400px; margin: 0 auto; padding: 0 1.5rem; display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 2rem; }
@@ -143,6 +153,32 @@
           </select>
         </div>
       </div>
+      <div class="polls-section">
+        <div class="poll-header">
+          <div>
+            <div class="poll-title">Calgary Mayoral Polls</div>
+            <div class="poll-meta">Leger • Field: Sep 26–28, 2025 • n=490 (Likely Voters: 373) • ±4.4pp</div>
+          </div>
+        </div>
+        <div class="poll-grid">
+          <div class="poll-card">
+            <h5>Vote intention (All respondents)</h5>
+            <canvas id="pollAllChart" height="160"></canvas>
+          </div>
+          <div class="poll-card">
+            <h5>Vote intention (Likely voters)</h5>
+            <canvas id="pollLVChart" height="160"></canvas>
+          </div>
+          <div class="poll-card">
+            <h5>Approval (Favourable)</h5>
+            <canvas id="approvalChart" height="160"></canvas>
+          </div>
+          <div class="poll-card">
+            <h5>Name awareness</h5>
+            <canvas id="awarenessChart" height="160"></canvas>
+          </div>
+        </div>
+      </div>
 
       <div class="controls">
         <input type="text" id="searchBox" placeholder="Search by name or party..." style="flex: 1; min-width: 250px;">
@@ -186,7 +222,33 @@
         <button class="filter-btn ccsd" onclick="setFilter('ccsd')">CCSD (<span id="countCCSD">0</span>)</button>
       </div>
 
-      
+      <div class="polls-section">
+        <div class="poll-header">
+          <div>
+            <div class="poll-title">Calgary Mayoral Polls</div>
+            <div class="poll-meta">Leger • Field: Sep 26–28, 2025 • n=490 (Likely Voters: 373) • ±4.4pp</div>
+          </div>
+        </div>
+        <div class="poll-grid">
+          <div class="poll-card">
+            <h5>Vote intention (All respondents)</h5>
+            <canvas id="pollAllChart" height="160"></canvas>
+          </div>
+          <div class="poll-card">
+            <h5>Vote intention (Likely voters)</h5>
+            <canvas id="pollLVChart" height="160"></canvas>
+          </div>
+          <div class="poll-card">
+            <h5>Approval (Favourable)</h5>
+            <canvas id="approvalChart" height="160"></canvas>
+          </div>
+          <div class="poll-card">
+            <h5>Name awareness</h5>
+            <canvas id="awarenessChart" height="160"></canvas>
+          </div>
+        </div>
+      </div>
+
     </div>
 
     <div id="results"></div>
@@ -780,6 +842,42 @@
       });
     }
 
+    // --- Mayoral Polls (Leger Sep 26–28, 2025) ---
+    function initPollCharts() {
+      if (typeof Chart === 'undefined') return;
+      const poll = {
+        pollster: 'Leger', date: '2025-09-26/28', sampleSize: 490, likelyVoters: 373, marginOfError: 4.4,
+        results: { farkas: 16, gondek: 14, sharp: 11, davison: 8, thiessen: 4, undecided: 35 },
+        likelyVoterResults: { farkas: 20, gondek: 16, sharp: 13, davison: 10, thiessen: 5, undecided: 29 },
+        approval: { farkas: 48, davison: 47, sharp: 44, gondek: 36, thiessen: 33 },
+        awareness: { gondek: 72, farkas: 58, sharp: 52, davison: 48, thiessen: 39 }
+      };
+
+      const labels = ['Farkas','Gondek','Sharp','Davison','Thiessen','Undecided'];
+      const apprLabels = ['Farkas','Davison','Sharp','Gondek','Thiessen'];
+      const awareLabels = ['Gondek','Farkas','Sharp','Davison','Thiessen'];
+      const palette = ['#3b82f6','#ef4444','#10b981','#f59e0b','#8b5cf6','#94a3b8'];
+
+      createBar('pollAllChart', labels, labels.map(l => poll.results[l.toLowerCase()] ?? null), palette);
+      createBar('pollLVChart', labels, labels.map(l => poll.likelyVoterResults[l.toLowerCase()] ?? null), palette);
+      createBar('approvalChart', apprLabels, apprLabels.map(l => poll.approval[l.toLowerCase()] ?? null), palette.slice(0,5));
+      createBar('awarenessChart', awareLabels, awareLabels.map(l => poll.awareness[l.toLowerCase()] ?? null), palette.slice(0,5));
+    }
+
+    function createBar(id, labels, data, colors) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      new Chart(el.getContext('2d'), {
+        type: 'bar',
+        data: { labels, datasets: [{ data, backgroundColor: colors, borderRadius: 6, borderSkipped: false }] },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          scales: { y: { beginAtZero: true, ticks: { callback: v => v + '%' } } },
+          plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ctx.parsed.y + '%' } } }
+        }
+      });
+    }
+
     document.addEventListener('DOMContentLoaded', () => {
       const searchInput = document.getElementById('searchBox');
       const wardSelect = document.getElementById('wardSelect');
@@ -795,6 +893,7 @@
         applyLanguage(langSel.value || 'en');
         setTimeout(() => setLanguageViaGoogle(langSel.value || 'en'), 500);
       }
+      initPollCharts();
       updateCounts();
       renderCandidates();
     });
