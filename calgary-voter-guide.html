@@ -41,7 +41,10 @@
         .section-icon { width: 40px; height: 40px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; }
         .mayor-icon { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
         .councillor-icon { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
-        .candidate-list { display: flex; flex-direction: column; gap: 15px; }
+        .candidate-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
+        .sort-bar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 12px 0 16px; }
+        .chip-toggle { display: inline-flex; align-items: center; gap: 6px; background: #f9fafb; color: #374151; border: 1px solid #e5e7eb; padding: 6px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; cursor: pointer; }
+        .chip-toggle input { accent-color: #3b82f6; }
         .candidate-card { background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); padding: 20px 25px; border-radius: 16px; display: flex; align-items: center; gap: 20px; transition: all 0.3s ease; animation: slideInRight 0.5s ease; border: 2px solid transparent; }
         .candidate-card:hover { transform: translateX(8px); border-color: #667eea; box-shadow: 0 8px 20px rgba(0,0,0,0.1); }
         .rank-badge { width: 50px; height: 50px; border-radius: 50%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; font-weight: 900; flex-shrink: 0; box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4); }
@@ -97,6 +100,20 @@
             </div>
 
             <div id="alertContainer"></div>
+            <div class="sort-bar">
+                <div style="font-weight:800;color:#111827">Sort:</div>
+                <label class="chip-toggle"><input type="radio" name="rankMode" value="alpha" checked> A–Z</label>
+                <label class="chip-toggle"><input type="radio" name="rankMode" value="muslim"> Muslim community priorities</label>
+                <div style="flex:1"></div>
+                <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center">
+                    <label class="chip-toggle"><input type="checkbox" value="affordability"> Affordability</label>
+                    <label class="chip-toggle"><input type="checkbox" value="housing"> Housing</label>
+                    <label class="chip-toggle"><input type="checkbox" value="safety"> Safety (prevention)</label>
+                    <label class="chip-toggle"><input type="checkbox" value="transit"> Transit</label>
+                    <label class="chip-toggle"><input type="checkbox" value="inclusion"> Inclusion</label>
+                    <label class="chip-toggle"><input type="checkbox" value="business"> Small business</label>
+                </div>
+            </div>
             <div id="resultsContainer"></div>
         </div>
     </div>
@@ -138,37 +155,81 @@
 
         function getCandidatesForWard(ward) {
             const wardStr = String(ward);
-            const empty = { mayors: [], councillors: [], trustees: [] };
+            const empty = { mayors: [], councillors: [], cbeTrustees: [], ccsdTrustees: [] };
             if (!Array.isArray(trackerCandidates) || trackerCandidates.length === 0) return empty;
             const mayors = trackerCandidates.filter(c => c.position === 'Mayor');
             const councillors = trackerCandidates.filter(c => c.position === 'Councillor' && String(c.ward||'') === wardStr);
-            const trustees = trackerCandidates.filter(c => /Trustee/i.test(String(c.position||'')) && parseTrusteeWards(c.ward).includes(wardStr));
-            return { mayors, councillors, trustees };
+            const cbeTrustees = trackerCandidates.filter(c => String(c.position||'').toUpperCase().includes('CBE TRUSTEE') && parseTrusteeWards(c.ward).includes(wardStr));
+            const ccsdTrustees = trackerCandidates.filter(c => String(c.position||'').toUpperCase().includes('CCSD TRUSTEE') && parseTrusteeWards(c.ward).includes(wardStr));
+            return { mayors, councillors, cbeTrustees, ccsdTrustees };
+        }
+
+        // Ranking controls
+        let rankingMode = 'alpha';
+        let selectedPriorities = new Set();
+        let lastWardDisplayed = null;
+        const PRIORITY_KEYWORDS = {
+            affordability: ['afford','tax','freeze','property tax','cost of living'],
+            housing: ['housing','rezoning','density','zoning','development','upzoning','green line','lrt'],
+            safety: ['safety','crime','prevention','enforcement','police','community safety'],
+            transit: ['transit','lrt','bus','mobility','green line','teal line','brt'],
+            inclusion: ['inclusion','equity','anti-racism','anti racism','newcomer','immigrant','youth','seniors','community'],
+            business: ['business','jobs','entrepreneur','small business','investment','economy']
+        };
+
+        function scoreCandidate(candidate) {
+            if (selectedPriorities.size === 0) return 0;
+            const hay = [candidate.issue1, candidate.issue2, candidate.issue3, candidate.notes, candidate.bio]
+                .filter(Boolean)
+                .join(' ')
+                .toLowerCase();
+            let score = 0;
+            selectedPriorities.forEach(key => {
+                const kws = PRIORITY_KEYWORDS[key] || [];
+                for (const kw of kws) {
+                    if (hay.includes(kw)) score += 1;
+                }
+            });
+            return score;
+        }
+
+        function sortCandidates(items) {
+            const arr = items.slice();
+            if (rankingMode === 'muslim' && selectedPriorities.size > 0) {
+                arr.sort((a,b)=>{
+                    const diff = scoreCandidate(b) - scoreCandidate(a);
+                    if (diff !== 0) return diff;
+                    return String(a.name||'').localeCompare(String(b.name||''));
+                });
+            } else {
+                arr.sort((a,b)=> String(a.name||'').localeCompare(String(b.name||'')) );
+            }
+            return arr;
         }
 
         function renderWardCandidatesHTML(ward) {
-            const { mayors, councillors, trustees } = getCandidatesForWard(ward);
+            const { mayors, councillors, cbeTrustees, ccsdTrustees } = getCandidatesForWard(ward);
             let html = '';
             const renderList = (title, iconClass, items, wardLabel) => {
                 if (!items || items.length === 0) return '';
+                const list = sortCandidates(items);
                 let s = `<div class="candidates-section"><h3 class="section-title"><span class="section-icon ${iconClass}">👤</span>${title}${wardLabel?` (${wardLabel})`:''}</h3><div class="candidate-list">`;
-                items.forEach((c, idx) => {
+                list.forEach((c, idx) => {
                     const name = c.url ? `<a href="${c.url}" target="_blank" rel="noopener" class="candidate-name">${c.name}</a>` : `<span class="candidate-name">${c.name}</span>`;
                     const showParty = c.party && c.party !== 'N/A';
                     const party = showParty ? `<div class="small">${c.party}</div>` : '';
                     const isAcclamation = (c.name||'').trim().toLowerCase().includes('acclamation');
                     if (isAcclamation) return; // skip rendering
                     const bullet = c.issue1 ? `<div class="small">• ${c.issue1}</div>` : '';
-                    s += `<div class="candidate-card" style="animation-delay:${idx*0.05}s">${name}${party}${bullet}</div>`;
+                    s += `<div class="candidate-card" style="animation-delay:${idx*0.05}s"><div class=\"rank-badge\">${idx+1}</div>${name}${party}${bullet}</div>`;
                 });
                 s += `</div></div>`;
                 return s;
             };
             html += renderList('Mayor Candidates', 'mayor-icon', mayors, 'City-wide');
             html += renderList(`Councillor Candidates`, 'councillor-icon', councillors, `Ward ${ward}`);
-            if (trustees && trustees.length) {
-                html += renderList('School Trustees', 'councillor-icon', trustees, `Ward ${ward}`);
-            }
+            html += renderList('Public School Trustees (CBE)', 'councillor-icon', cbeTrustees, `Ward ${ward}`);
+            html += renderList('Catholic School Trustees (CCSD)', 'councillor-icon', ccsdTrustees, `Ward ${ward}`);
             return html;
         }
 
@@ -516,6 +577,7 @@
         }
         function displayResults(ward,options={}){
             hideLoading(); dropdown.classList.remove('active');
+            lastWardDisplayed = ward;
             const sourceNote=options.source?`<div class="alert alert-success"><span>✅</span><span>Matched by ${options.source}${options.community?` – Community: ${options.community}`:''}${options.postal?` – Postal: ${options.postal}`:''}</span></div>`:'';
             let html=`${sourceNote}<div class="ward-badge"><h2>Your Ward</h2><div class="ward-number">Ward ${ward}</div></div>`;
             // Append candidates fetched from tracker
@@ -554,6 +616,17 @@
         loadTrackerCandidates();
         document.addEventListener('click',function(e){ if(!addressInput.contains(e.target) && !dropdown.contains(e.target)){ dropdown.classList.remove('active'); } });
         addressInput.addEventListener('keypress',function(e){ if(e.key==='Enter'){ dropdown.classList.remove('active'); searchWard(); } });
+        document.addEventListener('change', (e)=>{
+            const t = e.target;
+            if (t && t.name === 'rankMode') {
+                rankingMode = t.value === 'muslim' ? 'muslim' : 'alpha';
+                if (lastWardDisplayed) displayResults(lastWardDisplayed, {});
+            }
+            if (t && t.type === 'checkbox' && t.closest('.sort-bar')) {
+                if (t.checked) selectedPriorities.add(t.value); else selectedPriorities.delete(t.value);
+                if (lastWardDisplayed) displayResults(lastWardDisplayed, {});
+            }
+        });
     </script>
 </body>
 </html>
