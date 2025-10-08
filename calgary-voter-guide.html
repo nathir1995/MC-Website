@@ -168,8 +168,8 @@
                         }
                     }
                 }
-                if (Object.keys(wardIndex.community).length>0) showAlert('Ward map loaded from repository.', 'success');
-                else showAlert('Ward mapping files not found. Please add assets/data/calgary/wards/ward-#.json|.csv|.txt', 'info');
+                // Do not show a success toast; only warn if we failed to load any mapping
+                if (Object.keys(wardIndex.community).length===0) showAlert('Ward mapping files not found. Please add assets/data/calgary/wards/ward-#.json|.csv|.txt', 'info');
             } catch (e) {
                 showAlert('Ward mapping files not found in repository.', 'info');
             }
@@ -321,10 +321,16 @@
         addressInput.addEventListener('input', function(e){
             clearTimeout(debounceTimer);
             const value = e.target.value;
+            if (!value.trim()) {
+                // Clear results/alerts when input is emptied
+                document.getElementById('resultsContainer').innerHTML = '';
+                document.getElementById('alertContainer').innerHTML = '';
+            }
             if(!value || value.length<3 || !autocompleteService){ dropdown.classList.remove('active'); dropdown.innerHTML=''; return; }
             debounceTimer = setTimeout(()=>{
-                const bounds = new google.maps.LatLngBounds(new google.maps.LatLng(50.8429,-114.3144), new google.maps.LatLng(51.2139,-113.8668));
-                autocompleteService.getPlacePredictions({ input:value, componentRestrictions:{country:'ca'}, bounds }, displaySuggestions);
+                const calgaryBounds = new google.maps.LatLngBounds(new google.maps.LatLng(50.8429,-114.3144), new google.maps.LatLng(51.2139,-113.8668));
+                // Restrict predictions to Calgary, CA and to addresses only
+                autocompleteService.getPlacePredictions({ input:value, componentRestrictions:{country:'ca'}, locationRestriction: calgaryBounds, types: ['address'] }, displaySuggestions);
             },300);
         });
         function displaySuggestions(predictions,status){
@@ -363,9 +369,8 @@
             if (addressIndex[aiKey]) {
                 return lookupByCommunity(addressIndex[aiKey], { source: 'Address index' });
             }
-            const postalCodePattern=/^[A-Za-z]\d[A-Za-z][\s-]?\d[A-Za-z]\d$/;
-            if(postalCodePattern.test(address)){ lookupByPostalCode(address); }
-            else { geocodeAddress(address); }
+            // Skip postal-code path; always geocode when not found in Supabase index
+            geocodeAddress(address);
         }
         function geocodeAddress(address){
             showLoading();
