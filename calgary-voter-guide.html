@@ -105,6 +105,7 @@
 
     <script>
         const MAPS_PROXY_BASE = 'https://ajgqyygtstihrwjovhes.supabase.co/functions/v1/google-maps-proxy';
+        const gmapsSessionToken = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : String(Date.now() + Math.random());
         let wardIndex = { community: {}, postal: {}, fsa: {} };
         let wardCommunities = {}; // ward -> [communities]
         let addressIndex = {}; // normalizedAddress -> community
@@ -479,10 +480,10 @@
             if(!value || value.length<3){ dropdown.classList.remove('active'); dropdown.innerHTML=''; return; }
             debounceTimer = setTimeout(async ()=>{
                 try {
-                    const res = await fetch(`${MAPS_PROXY_BASE}?mode=autocomplete&q=${encodeURIComponent(value)}`);
+                    const res = await fetch(`${MAPS_PROXY_BASE}?mode=autocomplete&q=${encodeURIComponent(value)}&sessiontoken=${encodeURIComponent(gmapsSessionToken)}`);
                     if (!res.ok) { dropdown.classList.remove('active'); dropdown.innerHTML=''; return; }
                     const data = await res.json();
-                    const preds = Array.isArray(data.predictions) ? data.predictions.filter(p=>/calgary/i.test(p.description||'')) : [];
+                    const preds = Array.isArray(data.predictions) ? data.predictions : [];
                     displaySuggestions(preds);
                 } catch { dropdown.classList.remove('active'); dropdown.innerHTML=''; }
             },300);
