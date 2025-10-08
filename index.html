@@ -146,8 +146,9 @@
       align-items: center;
       flex-wrap: nowrap;
     }
-    .dropdown { position: relative; display: inline-flex; align-items: center; }
-    .dropbtn { cursor: pointer; display: inline-flex; align-items: center; }
+    .dropdown { position: relative; display: inline-flex; align-items: center; margin-top: 2px; vertical-align: middle; }
+    .dropbtn { cursor: pointer; display: inline-flex; align-items: center; line-height: 1; }
+    .dropbtn.nav-item { padding: var(--space-sm) var(--space-md); border-radius: var(--radius-md); }
     .dropdown-content { display: none; position: absolute; top: 100%; right: 0; background: #fff; border: 1px solid var(--color-gray-200); border-radius: var(--radius-md); min-width: 220px; box-shadow: var(--shadow-md); z-index: 1001; }
     .dropdown-content a { display: block; padding: 8px 12px; color: var(--color-gray-700); text-decoration: none; white-space: nowrap; }
     .dropdown-content a:hover { background: var(--color-gray-100); }
