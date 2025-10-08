@@ -104,15 +104,11 @@
     </div>
 
     <script>
-        // Load Google Maps API key from Supabase (public JSON), to avoid hardcoding
-        let GOOGLE_MAPS_API_KEY = '';
-        const SUPABASE_CONFIG_URL = 'https://ajgqyygtstihrwjovhes.supabase.co/storage/v1/object/public/YYC%20addresses/maps_config.json';
+        const MAPS_PROXY_BASE = 'https://ajgqyygtstihrwjovhes.supabase.co/functions/v1/google-maps-proxy';
         let wardIndex = { community: {}, postal: {}, fsa: {} };
         let wardCommunities = {}; // ward -> [communities]
         let addressIndex = {}; // normalizedAddress -> community
-        let autocompleteService = null;
-        let placesService = null;
-        let geocoder = null;
+        // Using proxy endpoints; no client Google JS objects needed
 
         const SUPABASE_JSON_URL = 'https://ajgqyygtstihrwjovhes.supabase.co/storage/v1/object/public/YYC%20addresses/filtered_property_data.json';
 
@@ -480,17 +476,20 @@
                 document.getElementById('resultsContainer').innerHTML = '';
                 document.getElementById('alertContainer').innerHTML = '';
             }
-            if(!value || value.length<3 || !autocompleteService){ dropdown.classList.remove('active'); dropdown.innerHTML=''; return; }
-            debounceTimer = setTimeout(()=>{
-                const calgaryBounds = new google.maps.LatLngBounds(new google.maps.LatLng(50.8429,-114.3144), new google.maps.LatLng(51.2139,-113.8668));
-                // Restrict predictions to Calgary, CA and to addresses only
-                autocompleteService.getPlacePredictions({ input:value, componentRestrictions:{country:'ca'}, locationRestriction: calgaryBounds, types: ['address'] }, displaySuggestions);
+            if(!value || value.length<3){ dropdown.classList.remove('active'); dropdown.innerHTML=''; return; }
+            debounceTimer = setTimeout(async ()=>{
+                try {
+                    const res = await fetch(`${MAPS_PROXY_BASE}?mode=autocomplete&q=${encodeURIComponent(value)}`);
+                    if (!res.ok) { dropdown.classList.remove('active'); dropdown.innerHTML=''; return; }
+                    const data = await res.json();
+                    const preds = Array.isArray(data.predictions) ? data.predictions.filter(p=>/calgary/i.test(p.description||'')) : [];
+                    displaySuggestions(preds);
+                } catch { dropdown.classList.remove('active'); dropdown.innerHTML=''; }
             },300);
         });
-        function displaySuggestions(predictions,status){
+        function displaySuggestions(predictions){
             dropdown.innerHTML='';
-            const ok = (google.maps.places.PlacesServiceStatus||{}).OK;
-            if(status!==ok || !predictions || predictions.length===0){ dropdown.classList.remove('active'); return; }
+            if(!predictions || predictions.length===0){ dropdown.classList.remove('active'); return; }
             predictions.forEach(prediction=>{
                 const item=document.createElement('div');
                 item.className='autocomplete-item';
@@ -498,20 +497,29 @@
                 item.addEventListener('click',()=>{
                     addressInput.value=prediction.description;
                     dropdown.classList.remove('active');
-                    if(placesService && prediction.place_id){
-                        placesService.getDetails({ placeId:prediction.place_id, fields:['address_components','geometry','name','formatted_address','types'] }, (place,detailStatus)=>{
-                            if(detailStatus===(google.maps.places.PlacesServiceStatus||{}).OK && place){
-                                const community=getCommunityFromComponents(place.address_components||[]);
-                                if(community){ lookupByCommunity(community,{source:'Google Places (neighborhood)'}); }
-                                else if(place.geometry && place.geometry.location){ reverseGeocode(place.geometry.location,'Google Places (reverse geocode)'); }
-                                else { geocodeAddress(prediction.description); }
-                            } else { geocodeAddress(prediction.description); }
-                        });
-                    } else { geocodeAddress(prediction.description); }
+                    if(prediction.place_id){ handlePlaceDetails(prediction.place_id, prediction.description); }
+                    else { geocodeAddress(prediction.description); }
                 });
                 dropdown.appendChild(item);
             });
             dropdown.classList.add('active');
+        }
+        async function handlePlaceDetails(placeId, fallbackText){
+            try {
+                const res = await fetch(`${MAPS_PROXY_BASE}?mode=place&q=${encodeURIComponent('place_id:'+placeId)}`);
+                if (res.ok) {
+                    const data = await res.json();
+                    const place = data && (data.result || data);
+                    const comps = (place && place.address_components) || [];
+                    const community = getCommunityFromComponents(comps);
+                    if (community) { lookupByCommunity(community, { source: 'Place details (neighborhood)' }); return; }
+                    const loc = place && place.geometry && place.geometry.location;
+                    if (loc && typeof loc.lat === 'number' && typeof loc.lng === 'number') {
+                        return reverseGeocode({ lat: loc.lat, lng: loc.lng }, 'Place details (reverse)');
+                    }
+                }
+            } catch {}
+            geocodeAddress(fallbackText);
         }
 
         async function searchWard(){
@@ -526,22 +534,34 @@
             // Skip postal-code path; always geocode when not found in Supabase index
             geocodeAddress(address);
         }
-        function geocodeAddress(address){
+        async function geocodeAddress(address){
             showLoading();
-            geocoder.geocode({ address: address + ', Calgary, AB' }, (results,status)=>{
-                if(status==='OK' && results && results.length){
+            try {
+                const res = await fetch(`${MAPS_PROXY_BASE}?mode=geocode&q=${encodeURIComponent(address + ', Calgary, AB')}`);
+                if (!res.ok) { showAlert('Address not found. Please try a different address.','error'); hideLoading(); return; }
+                const data = await res.json();
+                const results = data && data.results;
+                if (results && results.length) {
                     const best=results[0];
                     const community=getCommunityFromComponents(best.address_components||[]);
-                    if(community){ lookupByCommunity(community,{source:'Google Geocoding'}); }
-                    else if(best.geometry && best.geometry.location){ reverseGeocode(best.geometry.location,'Google Geocoding (reverse)'); }
-                    else { showAlert('Could not determine community from address','error'); hideLoading(); }
-                } else { showAlert('Address not found. Please try a different address.','error'); hideLoading(); }
-            });
+                    if(community){ lookupByCommunity(community,{source:'Geocoding'}); return; }
+                    const loc = best.geometry && best.geometry.location;
+                    if (loc && typeof loc.lat==='number' && typeof loc.lng==='number') {
+                        return reverseGeocode({ lat:loc.lat, lng:loc.lng }, 'Geocoding (reverse)');
+                    }
+                }
+                showAlert('Address not found. Please try a different address.','error'); hideLoading();
+            } catch {
+                showAlert('Address not found. Please try a different address.','error'); hideLoading();
+            }
         }
-        function reverseGeocode(latLng,source){
-            geocoder.geocode({ location: latLng }, (results,status)=>{
-                if(status==='OK' && results && results.length){
-                    // Prefer results explicitly tagged as neighborhood first, then sublocality
+        async function reverseGeocode(latLng,source){
+            try {
+                const res = await fetch(`${MAPS_PROXY_BASE}?mode=reverse&q=${encodeURIComponent(latLng.lat+','+latLng.lng)}`);
+                if (!res.ok) { showAlert('Reverse geocoding failed','error'); hideLoading(); return; }
+                const data = await res.json();
+                const results = data && data.results;
+                if (results && results.length){
                     const byPreference = [
                         r => Array.isArray(r.types) && r.types.includes('neighborhood'),
                         r => Array.isArray(r.types) && r.types.includes('sublocality'),
@@ -556,9 +576,11 @@
                             if(community){ lookupByCommunity(community,{source}); return; }
                         }
                     }
-                    showAlert('Could not determine community from reverse geocoding','error'); hideLoading();
-                } else { showAlert('Reverse geocoding failed','error'); hideLoading(); }
-            });
+                }
+                showAlert('Could not determine community from reverse geocoding','error'); hideLoading();
+            } catch {
+                showAlert('Reverse geocoding failed','error'); hideLoading();
+            }
         }
         function getCommunityFromComponents(components){
             if(!components) return null; let neighborhood=null,sublocality=null,sublocalityLevel1=null,colloquial=null;
@@ -628,7 +650,7 @@
                 .replace(/\s+/g,' ')
                 .trim();
         }
-        initGoogleMaps();
+        // No client Google JS; using Supabase proxy endpoints for autocomplete/geocoding
         loadWardCommunities().then(()=>{ loadPostalIndexFromSupabase(); });
         loadAddressIndex();
         loadTrackerCandidates();
