@@ -61,9 +61,24 @@
 </head>
 <body>
     <div class="container">
-        <div class="header">
+        <header class="header" style="background:white;border-bottom:1px solid #e5e7eb;box-shadow:0 1px 2px rgba(0,0,0,0.03)">
+            <div class="header-content" style="max-width:1400px;margin:0 auto;padding:0 1.5rem;display:flex;align-items:center;justify-content:space-between;min-height:72px;">
+                <a href="index.html" class="logo" style="display:flex;align-items:center;gap:12px;text-decoration:none;color:#111827;">
+                    <div class="logo-icon" style="width:36px;height:36px;background:linear-gradient(135deg,#3b82f6,#1d4ed8);border-radius:10px;display:flex;align-items:center;justify-content:center;color:white;font-weight:700">📊</div>
+                    <span class="logo-text" style="font-weight:800">Canadian Muslim Census</span>
+                </a>
+                <nav class="nav" style="display:flex;gap:12px;align-items:center">
+                    <a href="index.html" class="nav-item">Dashboard</a>
+                    <a href="insights.html" class="nav-item">Data Explorer</a>
+                    <a href="about.html" class="nav-item">Research</a>
+                    <a href="about.html" class="nav-item">About</a>
+                    <a href="blog.html" class="nav-item">Blog</a>
+                </nav>
+            </div>
+        </header>
+        <div class="header" style="text-align:center;color:#111;margin:24px 0 16px">
             <h1>🗳️ Calgary Voter Guide</h1>
-            <p>Find your ward and recommended candidates</p>
+            <p>Find your ward and candidates</p>
         </div>
 
         <div class="main-card">
@@ -71,9 +86,9 @@
 
             <div class="search-section">
                 <div class="input-group">
-                    <label for="addressInput">Enter Your Address or Postal Code</label>
+                    <label for="addressInput">Enter Your Address</label>
                     <div class="address-input-wrapper">
-                        <input type="text" id="addressInput" placeholder="123 Main St SW, Calgary or T2P 3M5" autocomplete="off">
+                        <input type="text" id="addressInput" placeholder="123 Main St SW, Calgary" autocomplete="off">
                         <span class="input-icon">📍</span>
                         <div id="autocompleteDropdown" class="autocomplete-dropdown"></div>
                     </div>
@@ -139,7 +154,10 @@
                 let s = `<div class="candidates-section"><h3 class="section-title"><span class="section-icon ${iconClass}">👤</span>${title}${wardLabel?` (${wardLabel})`:''}</h3><div class="candidate-list">`;
                 items.forEach((c, idx) => {
                     const name = c.url ? `<a href="${c.url}" target="_blank" rel="noopener" class="candidate-name">${c.name}</a>` : `<span class="candidate-name">${c.name}</span>`;
-                    const party = c.party ? `<div class="small">${c.party}</div>` : '';
+                    const showParty = c.party && c.party !== 'N/A';
+                    const party = showParty ? `<div class="small">${c.party}</div>` : '';
+                    const isAcclamation = (c.name||'').trim().toLowerCase().includes('acclamation');
+                    if (isAcclamation) return; // skip rendering
                     const bullet = c.issue1 ? `<div class="small">• ${c.issue1}</div>` : '';
                     s += `<div class="candidate-card" style="animation-delay:${idx*0.05}s">${name}${party}${bullet}</div>`;
                 });

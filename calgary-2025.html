@@ -749,12 +749,18 @@
     let currentSearch = '';
     let currentWard = '';
 
+    function isAcclamationPlaceholder(c) {
+      const name = (c.name||'').trim().toLowerCase();
+      return name === 'elected by acclamation' || name === 'acclamation';
+    }
+
     function updateCounts() {
-      document.getElementById('countAll').textContent = candidates.length;
-      document.getElementById('countMayor').textContent = candidates.filter(c => c.position === 'Mayor').length;
-      document.getElementById('countCouncillor').textContent = candidates.filter(c => c.position === 'Councillor').length;
-      document.getElementById('countCBE').textContent = candidates.filter(c => c.position === 'CBE Trustee').length;
-      document.getElementById('countCCSD').textContent = candidates.filter(c => c.position === 'CCSD Trustee').length;
+      const visible = candidates.filter(c => !isAcclamationPlaceholder(c));
+      document.getElementById('countAll').textContent = visible.length;
+      document.getElementById('countMayor').textContent = visible.filter(c => c.position === 'Mayor').length;
+      document.getElementById('countCouncillor').textContent = visible.filter(c => c.position === 'Councillor').length;
+      document.getElementById('countCBE').textContent = visible.filter(c => c.position === 'CBE Trustee').length;
+      document.getElementById('countCCSD').textContent = visible.filter(c => c.position === 'CCSD Trustee').length;
     }
 
     function setFilter(type) {
@@ -767,6 +773,7 @@
 
     function renderCandidates() {
       const filtered = candidates.filter(c => {
+        if (isAcclamationPlaceholder(c)) return false;
         const matchesFilter = currentFilter === 'all' ||
           (currentFilter === 'mayor' && c.position === 'Mayor') ||
           (currentFilter === 'councillor' && c.position === 'Councillor') ||
@@ -791,11 +798,12 @@
         const nameHtml = c.url
           ? `<a href="${c.url}" target="_blank" rel="noopener noreferrer">${c.name}</a>`
           : c.name;
+        const party = (c.party && c.party !== 'N/A') ? ` • ${c.party}` : '';
         return `
           <div class="candidate-card ${posClass}">
             <div class="candidate-name">${nameHtml}${statusBadge}</div>
             <div class="candidate-info">
-              <strong>${c.position}</strong> • Ward ${c.ward} • ${c.party}
+              <strong>${c.position}</strong> • Ward ${c.ward}${party}
             </div>
             <div class="priorities">
               <h4>Campaign Priorities:</h4>
