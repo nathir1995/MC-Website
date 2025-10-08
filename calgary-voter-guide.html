@@ -88,12 +88,14 @@
 
     <script>
         const GOOGLE_MAPS_API_KEY = 'AIzaSyCUwE9QZHo61wVzuEyPLbRwGv2fUipWSg0';
-        let wardIndex = { community: {} };
+        let wardIndex = { community: {}, postal: {}, fsa: {} };
         let wardCommunities = {}; // ward -> [communities]
         let addressIndex = {}; // normalizedAddress -> community
         let autocompleteService = null;
         let placesService = null;
         let geocoder = null;
+
+        const SUPABASE_JSON_URL = 'https://ajgqyygtstihrwjovhes.supabase.co/storage/v1/object/public/YYC%20addresses/filtered_property_data.json';
 
         function initGoogleMaps() {
             const script = document.createElement('script');
@@ -249,6 +251,56 @@
             }
         }
 
+        // Load postal/FSA -> ward from Supabase JSON
+        async function loadPostalIndexFromSupabase() {
+            try {
+                const res = await fetch(SUPABASE_JSON_URL, { cache: 'force-cache' });
+                if (!res.ok) return; // silently skip if not available
+                const data = await res.json();
+                const rows = Array.isArray(data) ? data : (data.records || []);
+                if (!rows || rows.length === 0) return;
+
+                const communityKeys = ['community','Community','COMMUNITY','NEIGHBOURHOOD','Neighbourhood','NEIGHBORHOOD'];
+                const postalKeys = ['postal','Postal','postal_code','PostalCode','POSTAL_CODE','POSTCODE','Postcode'];
+                const addressKeys = ['address','Address','ADDRESS','full_address','FullAddress','FULL_ADDRESS','street_address','StreetAddress'];
+
+                const pickString = (obj, keys) => {
+                    for (const k of keys) {
+                        if (Object.prototype.hasOwnProperty.call(obj, k)) {
+                            const v = (obj[k] ?? '').toString().trim();
+                            if (v) return v;
+                        }
+                    }
+                    return '';
+                };
+
+                let addedPostal = 0, addedFsa = 0, addedAddr = 0;
+                for (const r of rows) {
+                    const community = pickString(r, communityKeys);
+                    const postalRaw = pickString(r, postalKeys);
+                    const addrRaw = pickString(r, addressKeys);
+                    if (!community) continue;
+
+                    const ward = wardIndex.community[normalizeKey(community)];
+                    if (addrRaw) { addressIndex[normalizeAddressKey(addrRaw)] = community; addedAddr++; }
+
+                    if (postalRaw) {
+                        const pc = postalRaw.toUpperCase().replace(/\s+/g,'');
+                        if (pc) {
+                            if (!wardIndex.postal[pc] && ward) { wardIndex.postal[pc] = ward; addedPostal++; }
+                            const fsa = pc.slice(0,3);
+                            if (fsa && !wardIndex.fsa[fsa] && ward) { wardIndex.fsa[fsa] = ward; addedFsa++; }
+                        }
+                    }
+                }
+                if (addedPostal || addedFsa || addedAddr) {
+                    showAlert(`Loaded address index from Supabase (${addedPostal} postal, ${addedFsa} FSA, ${addedAddr} addresses)`, 'success');
+                }
+            } catch (e) {
+                // ignore network/parse errors to keep tool functional
+            }
+        }
+
         const addressInput = document.getElementById('addressInput');
         const dropdown = document.getElementById('autocompleteDropdown');
         let debounceTimer;
@@ -342,7 +394,15 @@
             else { showAlert(`Community "${community}" not found in database`,'error'); hideLoading(); }
         }
         function lookupByPostalCode(postalCode){
-            // For now, prefer address geocoding or neighborhood; postal-to-ward not supported without mapping file
+            showLoading();
+            const clean = postalCode.toUpperCase().replace(/\s+/g,'');
+            let ward = wardIndex.postal[clean];
+            if (!ward && clean.length >= 3) {
+                const fsa = clean.slice(0,3);
+                ward = wardIndex.fsa[fsa];
+                if (ward) { displayResults(ward, { source: 'Postal FSA match', postal: fsa }); return; }
+            }
+            if (ward) { displayResults(ward, { source: 'Full postal code match', postal: clean }); return; }
             geocodeAddress(postalCode);
         }
         function displayResults(ward,options={}){
@@ -378,7 +438,7 @@
                 .trim();
         }
         initGoogleMaps();
-        loadWardCommunities();
+        loadWardCommunities().then(()=>{ loadPostalIndexFromSupabase(); });
         loadAddressIndex();
         document.addEventListener('click',function(e){ if(!addressInput.contains(e.target) && !dropdown.contains(e.target)){ dropdown.classList.remove('active'); } });
         addressInput.addEventListener('keypress',function(e){ if(e.key==='Enter'){ dropdown.classList.remove('active'); searchWard(); } });
