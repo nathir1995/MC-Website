@@ -146,6 +146,12 @@
       align-items: center;
       flex-wrap: nowrap;
     }
+    .dropdown { position: relative; }
+    .dropbtn { cursor: pointer; }
+    .dropdown-content { display: none; position: absolute; top: 100%; right: 0; background: #fff; border: 1px solid var(--color-gray-200); border-radius: var(--radius-md); min-width: 220px; box-shadow: var(--shadow-md); z-index: 1001; }
+    .dropdown-content a { display: block; padding: 8px 12px; color: var(--color-gray-700); text-decoration: none; white-space: nowrap; }
+    .dropdown-content a:hover { background: var(--color-gray-100); }
+    .dropdown:hover .dropdown-content { display: block; }
 
     .nav-item {
       color: var(--color-gray-600);
@@ -651,7 +657,20 @@
         <a href="about.html" class="nav-item">Research</a>
         <a href="about.html" class="nav-item">About</a>
         <a href="blog.html" class="nav-item">Blog</a>
-        <a href="calgary-2025.html" class="nav-item">Calgary Election 2025</a>
+        <div class="dropdown">
+          <a href="#" class="nav-item dropbtn">Calgary ▾</a>
+          <div class="dropdown-content">
+            <a href="calgary-2025.html">Calgary Election 2025</a>
+            <a href="calgary-mayoral-polling-2021-vs-2025.html">Mayoral Polling Analysis</a>
+            <a href="calgary-2025-mayoral-analysis.html">Comparative Analysis</a>
+          </div>
+        </div>
+        <div class="dropdown">
+          <a href="#" class="nav-item dropbtn">Edmonton ▾</a>
+          <div class="dropdown-content">
+            <a href="edmonton-2025.html">Edmonton Election 2025</a>
+          </div>
+        </div>
       </nav>
       
       <div class="search-container">

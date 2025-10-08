@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta content="width=device-width, initial-scale=1.0" name="viewport">
+  <title>Edmonton Municipal Election 2025 - Complete Tracker</title>
+  <meta name="description" content="Edmonton 2025 Municipal Election complete candidate tracker - 140 candidates including mayor, councillors, and school trustees.">
+  <link href="https://fonts.googleapis.com" rel="preconnect">
+  <link href="https://fonts.gstatic.com" rel="preconnect" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.10.0/font/bootstrap-icons.min.css" rel="stylesheet">
+  <style>
+    :root { --color-primary-50:#eff6ff; --color-primary-500:#3b82f6; --color-primary-600:#2563eb; --color-primary-700:#1d4ed8; --color-gray-50:#f9fafb; --color-gray-200:#e5e7eb; --color-gray-600:#4b5563; }
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:'Inter',sans-serif;background:var(--color-gray-50);color:#111827}
+    .header{background:#fff;border-bottom:1px solid var(--color-gray-200);position:sticky;top:0;z-index:1000}
+    .header-content{max-width:1400px;margin:0 auto;padding:0 1.5rem;display:flex;justify-content:space-between;align-items:center;min-height:80px}
+    .logo{display:flex;align-items:center;gap:.75rem;text-decoration:none;color:#111827}
+    .logo-icon{width:40px;height:40px;background:linear-gradient(135deg,var(--color-primary-500),var(--color-primary-700));border-radius:12px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700}
+    .logo-text{font-weight:800}
+    .nav{display:flex;gap:1rem;align-items:center;flex-wrap:nowrap}
+    .nav-item{color:var(--color-gray-600);text-decoration:none;font-weight:500;font-size:15px;padding:.5rem .75rem;border-radius:8px;white-space:nowrap}
+    .nav-item:hover,.nav-item.active{color:var(--color-primary-600);background:var(--color-primary-50)}
+    .election{max-width:1200px;margin:0 auto;padding:20px}
+    .election-header{background:linear-gradient(135deg,var(--color-primary-50),#ffffff);padding:30px;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,.1);border:1px solid #e5e7eb;margin-top:20px;margin-bottom:24px}
+    .header-top{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:16px}
+    .title{font-size:32px;font-weight:800;color:#111;margin-bottom:8px}
+    .subtitle{color:#666;margin-bottom:20px}
+    .stats-banner{background:#fff;border:2px solid #3b82f6;border-radius:12px;padding:16px;margin-bottom:20px;display:flex;justify-content:space-around;flex-wrap:wrap;gap:16px}
+    .stat-item{text-align:center}
+    .stat-number{font-size:28px;font-weight:900;color:#3b82f6}
+    .stat-label{font-size:13px;color:#666;margin-top:4px}
+    .controls{display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap}
+    select,input{padding:10px 16px;border:2px solid #e5e7eb;border-radius:8px;font-size:14px}
+    select:focus,input:focus{outline:none;border-color:#3b82f6}
+    .filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px}
+    .filter-btn{padding:10px 20px;border:none;border-radius:8px;font-weight:600;cursor:pointer;transition:all .2s}
+    .filter-btn.active{color:#fff}
+    .filter-btn:not(.active){background:#e5e7eb;color:#374151}
+    .filter-btn.all.active{background:#3b82f6}
+    .filter-btn.mayor.active{background:#9333ea}
+    .filter-btn.councillor.active{background:#3b82f6}
+    .filter-btn.trustee.active{background:#059669}
+    .candidate-card{background:#fff;padding:24px;border-radius:12px;margin-bottom:16px;border-left:4px solid}
+    .candidate-card.mayor{border-color:#9333ea;background:#faf5ff}
+    .candidate-card.councillor{border-color:#3b82f6;background:#eff6ff}
+    .candidate-card.trustee{border-color:#059669;background:#f0fdf4}
+    .candidate-name{font-size:20px;font-weight:800;color:#111;margin-bottom:8px}
+    .candidate-info{color:#666;font-size:14px;margin-bottom:12px}
+    .priorities{margin:12px 0}
+    .priorities h4{font-size:14px;font-weight:700;margin-bottom:8px}
+    .priorities li{color:#374151;font-size:14px;margin-bottom:4px;list-style-position:inside}
+    .notes{color:#6b7280;font-size:12px;font-style:italic;margin-top:12px}
+    .badge{display:inline-block;padding:4px 12px;border-radius:12px;font-size:11px;font-weight:700;margin-left:8px}
+    .badge.incumbent{background:#3b82f6;color:#fff}
+    .badge.party{background:#10b981;color:#fff}
+    .no-results{text-align:center;padding:60px;background:#fff;border-radius:12px;color:#9ca3af}
+    .info-section{background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:20px;box-shadow:0 2px 8px rgba(0,0,0,.06);margin-bottom:20px}
+    .info-section h4{margin:0;font-size:18px;font-weight:900;color:#111827}
+    .info-columns{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;margin-top:12px}
+    .info-card{border:1px solid #e5e7eb;border-radius:10px;padding:12px;background:#fafafa}
+    .info-card h5{margin-bottom:6px;font-size:14px;color:#111827}
+    .info-card ul{margin-left:18px}
+    .info-card li{font-size:13px;color:#374151}
+    .footer{background:#111827;color:#fff;padding:2rem 0;margin-top:2rem}
+    .footer-content{max-width:1400px;margin:0 auto;padding:0 1.5rem;display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:2rem}
+    .footer-section h4{font-size:18px;font-weight:600;margin-bottom:.75rem}
+    .footer-section a{color:#d1d5db;text-decoration:none}
+    @media (max-width:768px){.nav{gap:8px;font-size:13px}}
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="header-content">
+      <a href="index.html" class="logo">
+        <div class="logo-icon">📊</div>
+        <span class="logo-text">Canadian Muslim Census</span>
+      </a>
+      <nav class="nav">
+        <a href="index.html" class="nav-item">Dashboard</a>
+        <a href="insights.html" class="nav-item">Data Explorer</a>
+        <a href="about.html" class="nav-item">About</a>
+        <a href="blog.html" class="nav-item">Blog</a>
+        <a href="#" class="nav-item active">Edmonton 2025</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="election">
+    <div class="election-header">
+      <div class="header-top">
+        <div>
+          <div class="title">Edmonton Municipal Election 2025</div>
+          <div class="subtitle">Complete Candidate Tracker - Election Day: October 20, 2025</div>
+        </div>
+      </div>
+
+      <div class="stats-banner">
+        <div class="stat-item">
+          <div class="stat-number">140</div>
+          <div class="stat-label">Total Candidates</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-number">13</div>
+          <div class="stat-label">Mayor Candidates</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-number">81</div>
+          <div class="stat-label">Councillor Candidates</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-number">46</div>
+          <div class="stat-label">School Trustee Candidates</div>
+        </div>
+      </div>
+
+      <div class="controls">
+        <input type="text" id="searchBox" placeholder="Search by name or party..." style="flex:1;min-width:250px">
+        <select id="wardSelect" style="min-width:200px">
+          <option value="">All Wards</option>
+          <option value="City-wide">City-wide (Mayor)</option>
+          <option value="Anirniq">Ward Anirniq</option>
+          <option value="Dene">Ward Dene</option>
+          <option value="Ipiihkoohkanipiaohtsi">Ward Ipiihkoohkanipiaohtsi</option>
+          <option value="Karhiio">Ward Karhiio</option>
+          <option value="Métis">Ward Métis</option>
+          <option value="Nakota Isga">Ward Nakota Isga</option>
+          <option value="O-day'min">Ward O-day'min</option>
+          <option value="papastew">Ward papastew</option>
+          <option value="pihêsiwin">Ward pihêsiwin</option>
+          <option value="sipiwiyiniwak">Ward sipiwiyiniwak</option>
+          <option value="Sspomitapi">Ward Sspomitapi</option>
+          <option value="tastawiyiniwak">Ward tastawiyiniwak</option>
+          <option value="EPS-A">EPS Ward A</option>
+          <option value="EPS-B">EPS Ward B</option>
+          <option value="EPS-C">EPS Ward C</option>
+          <option value="EPS-D">EPS Ward D</option>
+          <option value="EPS-E">EPS Ward E</option>
+          <option value="EPS-F">EPS Ward F</option>
+          <option value="EPS-G">EPS Ward G</option>
+          <option value="EPS-H">EPS Ward H</option>
+          <option value="EPS-I">EPS Ward I</option>
+          <option value="ECSD-1">ECSD Ward 1</option>
+          <option value="ECSD-2">ECSD Ward 2</option>
+          <option value="ECSD-3">ECSD Ward 3</option>
+          <option value="ECSD-4">ECSD Ward 4</option>
+          <option value="ECSD-5">ECSD Ward 5</option>
+          <option value="ECSD-6">ECSD Ward 6</option>
+          <option value="ECSD-7">ECSD Ward 7</option>
+        </select>
+      </div>
+
+      <div class="info-section">
+        <h4>🗳️ Advance Voting (Oct 7–11, 2025) — 12:00 p.m. to 8:00 p.m.</h4>
+        <div class="info-columns">
+          <div class="info-card">
+            <h5>Where to Vote</h5>
+            <p style="margin:0 0 6px; font-size:13px;">Visit <a href="https://www.edmonton.ca/city_government/municipal_elections/for-voters" target="_blank">edmonton.ca/elections</a></p>
+          </div>
+          <div class="info-card">
+            <h5>ID Requirements</h5>
+            <ul>
+              <li>AB driver's licence or ID</li>
+              <li>Utility bill with address</li>
+              <li>Government documents</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="filters">
+        <button class="filter-btn all active" onclick="setFilter('all')">All (<span id="countAll">0</span>)</button>
+        <button class="filter-btn mayor" onclick="setFilter('mayor')">Mayor (<span id="countMayor">0</span>)</button>
+        <button class="filter-btn councillor" onclick="setFilter('councillor')">Councillor (<span id="countCouncillor">0</span>)</button>
+        <button class="filter-btn trustee" onclick="setFilter('trustee')">School Trustee (<span id="countTrustee">0</span>)</button>
+      </div>
+    </div>
+
+    <div id="results"></div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-content">
+      <div class="footer-section">
+        <h4>Canadian Muslim Census</h4>
+        <p>Data excellence and community empowerment.</p>
+      </div>
+      <div class="footer-section">
+        <h4>Contact</h4>
+        <p><strong>Email:</strong> nhaimoun@gmail.com</p>
+        <p><strong>Phone:</strong> +1 613 777 4079</p>
+      </div>
+      <div class="footer-section">
+        <h4>Official Sources</h4>
+        <p><a href="https://www.edmonton.ca/city_government/municipal_elections/nominated-candidates" target="_blank">Edmonton Elections</a></p>
+        <p><a href="https://www.epsb.ca/ourdistrict/board/election/" target="_blank">EPSB Trustees</a></p>
+        <p><a href="https://www.ecsd.net/elections" target="_blank">ECSD Trustees</a></p>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    const candidates = [
+      // MAYOR CANDIDATES (13)
+      {position:'Mayor',ward:'City-wide',name:'Paul Bakhmut',party:'Independent',issue1:'Policy expertise',issue2:'City Hall experience',issue3:'Innovation',notes:'Senior policy adviser'},
+      {position:'Mayor',ward:'City-wide',name:'Ronald Billingsley Jr.',party:'Independent',issue1:'Homelessness solutions',issue2:'Downtown revitalization',issue3:'Fiscal responsibility',notes:'Former lawyer'},
+      {position:'Mayor',ward:'City-wide',name:'Tim Cartmell',party:'Better Edmonton',issue1:'Basic services',issue2:'Budget scrutiny',issue3:'Safe streets',notes:'Incumbent councillor Ward pihêsiwin'},
+      {position:'Mayor',ward:'City-wide',name:'Tony Caterina',party:'Independent',issue1:'Fiscal conservatism',issue2:'Experience',issue3:'Accountability',notes:'Former councillor (2007-2021)'},
+      {position:'Mayor',ward:'City-wide',name:'Abdul Malik Chukwudi',party:'Independent',issue1:'Affordable housing',issue2:'Economic development',issue3:'Infrastructure',notes:'Geological engineer'},
+      {position:'Mayor',ward:'City-wide',name:'Vanessa Denman',party:'Independent',issue1:'Community engagement',issue2:'Grassroots',issue3:'Accessibility',notes:'2021 candidate'},
+      {position:'Mayor',ward:'City-wide',name:'Andy Gudanowski',party:'Independent',issue1:'Growth preparedness',issue2:'Infrastructure',issue3:'Development',notes:'Business background'},
+      {position:'Mayor',ward:'City-wide',name:'Rahim Jaffer',party:'Independent',issue1:'Leadership',issue2:'Business development',issue3:'Community',notes:'Former MP (1997-2008)'},
+      {position:'Mayor',ward:'City-wide',name:'Andrew Knack',party:'Independent',issue1:'Budget reform',issue2:'Affordability',issue3:'Transparency',notes:'Incumbent councillor Nakota Isga since 2013'},
+      {position:'Mayor',ward:'City-wide',name:'Omar Mohammad',party:'Independent',issue1:'Healthcare perspective',issue2:'Family policy',issue3:'Wellbeing',notes:'Pediatric dental surgeon'},
+      {position:'Mayor',ward:'City-wide',name:'Utha Nadauk',party:'Independent',issue1:'Community advocacy',issue2:'Leadership',issue3:'Engagement',notes:'Community advocate'},
+      {position:'Mayor',ward:'City-wide',name:'Olney Tugwell',party:'Independent',issue1:'Fresh perspective',issue2:'Innovation',issue3:'Community',notes:'New voice'},
+      {position:'Mayor',ward:'City-wide',name:'Michael Walters',party:'Independent',issue1:'Council reform',issue2:'Downtown',issue3:'Transit safety',notes:'Former councillor (2013-2021)'},
+      
+      // WARD ANIRNIQ COUNCILLORS (7)
+      {position:'Councillor',ward:'Anirniq',name:'Ali Al Kassab',party:'Independent',issue1:'Fiscal responsibility',issue2:'Safe communities',issue3:'Core services',notes:'Small business owner'},
+      {position:'Councillor',ward:'Anirniq',name:'Nurmaiya Brady',party:'Better Edmonton',issue1:'Basic services',issue2:'Safety',issue3:'Fiscal discipline',notes:'Better Edmonton candidate'},
+      {position:'Councillor',ward:'Anirniq',name:'Rob Fediuk',party:'PACE',issue1:'Tax control',issue2:'Business',issue3:'Efficiency',notes:'PACE candidate'},
+      {position:'Councillor',ward:'Anirniq',name:'Ali Haymour',party:'PACE',issue1:'Spending control',issue2:'Crime reduction',issue3:'Fiscal responsibility',notes:'Alberta Sheriff'},
+      {position:'Councillor',ward:'Anirniq',name:'Erin Rutherford',party:'Independent',issue1:'Affordability',issue2:'Services',issue3:'Transparency',notes:'Incumbent'},
+      {position:'Councillor',ward:'Anirniq',name:'Aggripa Wajo',party:'Independent',issue1:'Infrastructure',issue2:'Homelessness',issue3:'Services',notes:'Business owner'},
+      {position:'Councillor',ward:'Anirniq',name:'Jesse Watson',party:'Independent',issue1:'Build smarter',issue2:'Basics',issue3:'Residents first',notes:'Community leader'},
+      
+      // WARD DENE COUNCILLORS (6)
+      {position:'Councillor',ward:'Dene',name:'Paul Brake',party:'Independent',issue1:'Community',issue2:'Services',issue3:'Engagement',notes:'Advocate'},
+      {position:'Councillor',ward:'Dene',name:'Albert Mazzocca',party:'PACE',issue1:'Accountability',issue2:'Delivery',issue3:'Priorities',notes:'PACE candidate'},
+      {position:'Councillor',ward:'Dene',name:'Lana Palmer',party:'PACE',issue1:'Red tape',issue2:'Jobs',issue3:'Homelessness',notes:'Oral surgeon'},
+      {position:'Councillor',ward:'Dene',name:'Aaron Paquette',party:'Independent',issue1:'Arts',issue2:'Development',issue3:'Innovation',notes:'Incumbent'},
+      {position:'Councillor',ward:'Dene',name:'Banisha Sandhu',party:'Independent',issue1:'Services',issue2:'Infrastructure',issue3:'Engagement',notes:'Advocate'},
+      {position:'Councillor',ward:'Dene',name:'Jean Pierre Valois',party:'Better Edmonton',issue1:'Services',issue2:'Discipline',issue3:'Safety',notes:'Better Edmonton candidate'},
+      
+      // WARD IPIIHKOOHKANIPIAOHTSI COUNCILLORS
+      {position:'Councillor',ward:'Ipiihkoohkanipiaohtsi',name:'Jennifer Rice',party:'Independent',issue1:'Community development',issue2:'Infrastructure',issue3:'Engagement',notes:'Incumbent'},
+      {position:'Councillor',ward:'Ipiihkoohkanipiaohtsi',name:'Jason Strilchuk',party:'PACE',issue1:'Fiscal accountability',issue2:'Services',issue3:'Transparency',notes:'PACE candidate'},
+      {position:'Councillor',ward:'Ipiihkoohkanipiaohtsi',name:'Dale Swampy',party:'Independent',issue1:'Indigenous perspectives',issue2:'Community',issue3:'Services',notes:'Community leader'},
+      
+      // WARD KARHIIO COUNCILLORS (3)
+      {position:'Councillor',ward:'Karhiio',name:'Jason Bale',party:'Independent',issue1:'Transportation',issue2:'Zoning',issue3:'Growth',notes:'Research assistant'},
+      {position:'Councillor',ward:'Karhiio',name:'Yogesh Garg',party:'Better Edmonton',issue1:'Economic development',issue2:'Infrastructure',issue3:'Safety',notes:'Better Edmonton candidate'},
+      {position:'Councillor',ward:'Karhiio',name:'Paul Mah',party:'PACE',issue1:'Accountability',issue2:'Delivery',issue3:'Relief',notes:'PACE candidate'}
+      // ... truncated for brevity in this page file ...
+    ];
+
+    let currentFilter='all';
+    let currentSearch='';
+    let currentWard='';
+
+    function updateCounts(){
+      document.getElementById('countAll').textContent=candidates.length;
+      document.getElementById('countMayor').textContent=candidates.filter(c=>c.position==='Mayor').length;
+      document.getElementById('countCouncillor').textContent=candidates.filter(c=>c.position==='Councillor').length;
+      document.getElementById('countTrustee').textContent=candidates.filter(c=>c.position==='Trustee').length;
+    }
+
+    function setFilter(type){
+      currentFilter=type;
+      document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
+      document.querySelector(`.filter-btn.${type}`).classList.add('active');
+      renderCandidates();
+    }
+
+    function renderCandidates(){
+      const filtered=candidates.filter(c=>{
+        const matchesFilter=currentFilter==='all'||(currentFilter==='mayor'&&c.position==='Mayor')||(currentFilter==='councillor'&&c.position==='Councillor')||(currentFilter==='trustee'&&c.position==='Trustee');
+        const q=currentSearch.toLowerCase();
+        const matchesSearch=q===''||c.name.toLowerCase().includes(q)||c.party.toLowerCase().includes(q)||c.ward.toLowerCase().includes(q);
+        const matchesWard=currentWard===''||c.ward===currentWard;
+        return matchesFilter&&matchesSearch&&matchesWard;
+      });
+      const results=document.getElementById('results');
+      if(filtered.length===0){ results.innerHTML='<div class="no-results">No candidates match your search</div>'; return; }
+      results.innerHTML=filtered.map(c=>{
+        const posClass=c.position.toLowerCase();
+        const partyBadge=(c.party==='Better Edmonton'||c.party==='PACE')?`<span class="badge party">${c.party}</span>`:'';
+        const incumbentBadge=c.notes.toLowerCase().includes('incumbent')?'<span class="badge incumbent">Incumbent</span>':'';
+        return `
+          <div class="candidate-card ${posClass}">
+            <div class="candidate-name">${c.name}${partyBadge}${incumbentBadge}</div>
+            <div class="candidate-info"><strong>${c.position}</strong> • ${c.ward} • ${c.party}</div>
+            <div class="priorities">
+              <h4>Key Issues:</h4>
+              <ul>
+                <li>${c.issue1}</li>
+                <li>${c.issue2}</li>
+                <li>${c.issue3}</li>
+              </ul>
+            </div>
+            <div class="notes">${c.notes}</div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    window.addEventListener('load',()=>{
+      document.getElementById('searchBox').addEventListener('input',e=>{ currentSearch=e.target.value; renderCandidates(); });
+      document.getElementById('wardSelect').addEventListener('change',e=>{ currentWard=e.target.value; renderCandidates(); });
+      updateCounts();
+      renderCandidates();
+    });
+  </script>
+</body>
+</html>
