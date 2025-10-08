@@ -48,6 +48,7 @@
         .loading { text-align: center; padding: 40px; color: #999; }
         .spinner { border: 4px solid #f3f3f3; border-top: 4px solid #667eea; border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; margin: 0 auto 20px; }
         .info-note { background: #f8f9fa; padding: 16px; border-radius: 12px; border: 2px dashed #ddd; color: #555; margin-bottom: 20px; }
+        .small { font-size: 12px; color: #6b7280; }
         @keyframes fadeInDown { from { opacity: 0; transform: translateY(-30px);} to {opacity: 1; transform: translateY(0);} }
         @keyframes fadeInUp { from { opacity: 0; transform: translateY(30px);} to {opacity: 1; transform: translateY(0);} }
         @keyframes slideIn { from { opacity: 0; transform: translateX(-20px);} to {opacity: 1; transform: translateX(0);} }
@@ -65,7 +66,7 @@
         </div>
 
         <div class="main-card">
-            <div class="info-note">Enter your address to find your Calgary ward. This tool uses ward-to-community files from the site repository.</div>
+            <div class="info-note">Enter your address to find your Calgary ward. This tool links your address to a community, then maps that community to the correct ward using ward-specific files from the repository.<div class="small" style="margin-top:8px;">Data sources expected: <code>assets/data/calgary/addresses.(json|csv)</code> and <code>assets/data/calgary/wards/ward-#.json|.csv|.txt</code></div></div>
 
             <div class="search-section">
                 <div class="input-group">
@@ -87,6 +88,7 @@
     <script>
         const GOOGLE_MAPS_API_KEY = 'AIzaSyCUwE9QZHo61wVzuEyPLbRwGv2fUipWSg0';
         let wardIndex = { community: {} };
+        let addressIndex = {}; // normalizedAddress -> community
         let autocompleteService = null;
         let placesService = null;
         let geocoder = null;
@@ -105,21 +107,99 @@
             placesService = new google.maps.places.PlacesService(mapDiv);
         }
 
-        // Load ward-to-community mapping from repository file
+        // Load ward-to-community mapping from ward-specific files (1..14) or fallback JSON bundle if present
         async function loadWardCommunities() {
             try {
-                const res = await fetch('assets/data/calgary/ward-communities.json', { cache: 'no-store' });
-                if (!res.ok) throw new Error('mapping not found');
-                const data = await res.json();
-                wardIndex.community = {};
-                Object.entries(data || {}).forEach(([ward, communities]) => {
-                    (communities || []).forEach(name => {
-                        wardIndex.community[normalizeKey(name)] = ward.toString().replace(/^(Ward\s*)/i,'').trim();
+                const bundle = await fetch('assets/data/calgary/ward-communities.json', { cache: 'no-store' });
+                if (bundle.ok) {
+                    const data = await bundle.json();
+                    wardIndex.community = {};
+                    Object.entries(data || {}).forEach(([ward, communities]) => {
+                        (communities || []).forEach(name => {
+                            wardIndex.community[normalizeKey(name)] = ward.toString().replace(/^(Ward\s*)/i,'').trim();
+                        });
                     });
-                });
-                showAlert('Ward map loaded from repository.', 'success');
+                } else {
+                    // Try ward-#.json|.csv|.txt files
+                    wardIndex.community = {};
+                    const tryPaths = async (path) => {
+                        const res = await fetch(path, { cache: 'no-store' });
+                        if (!res.ok) return false;
+                        const ct = res.headers.get('content-type')||'';
+                        if (ct.includes('application/json')) {
+                            const arr = await res.json();
+                            if (Array.isArray(arr)) return arr;
+                            return false;
+                        } else {
+                            const txt = await res.text();
+                            // CSV (first column) or newline list
+                            const lines = txt.split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
+                            if (lines.length===0) return [];
+                            // If header looks like it, skip first when it contains letters beyond commas
+                            const startIdx = lines[0].toLowerCase().includes('community') ? 1 : 0;
+                            return lines.slice(startIdx).map(l=>l.split(',')[0].trim());
+                        }
+                    };
+                    for (let i=1;i<=14;i++) {
+                        const wardNum = String(i);
+                        const candidates = [
+                            `assets/data/calgary/wards/ward-${wardNum}.json`,
+                            `assets/data/calgary/wards/ward-${wardNum}.csv`,
+                            `assets/data/calgary/wards/ward-${wardNum}.txt`
+                        ];
+                        let list = null;
+                        for (const p of candidates) {
+                            try { const res = await tryPaths(p); if (res!==false) { list = res; break; } } catch {}
+                        }
+                        if (Array.isArray(list)) {
+                            list.forEach(name => { if (name) wardIndex.community[normalizeKey(name)] = wardNum; });
+                        }
+                    }
+                }
+                if (Object.keys(wardIndex.community).length>0) showAlert('Ward map loaded from repository.', 'success');
+                else showAlert('Ward mapping files not found. Please add assets/data/calgary/wards/ward-#.json|.csv|.txt', 'info');
             } catch (e) {
-                showAlert('Ward mapping file not found. Please add assets/data/calgary/ward-communities.json', 'info');
+                showAlert('Ward mapping files not found in repository.', 'info');
+            }
+        }
+
+        // Load address -> community index from repository (JSON or CSV)
+        async function loadAddressIndex() {
+            try {
+                addressIndex = {};
+                // Prefer JSON
+                let res = await fetch('assets/data/calgary/addresses.json', { cache: 'no-store' });
+                if (res.ok) {
+                    const data = await res.json();
+                    // Expect [{address, community}] or { address: community }
+                    if (Array.isArray(data)) {
+                        data.forEach(row => {
+                            if (!row) return; const a = row.address||row.Address||row.ADDRESS; const c = row.community||row.Community||row.COMMUNITY;
+                            if (a && c) addressIndex[normalizeAddressKey(a)] = c.toString().trim();
+                        });
+                    } else {
+                        Object.entries(data||{}).forEach(([a,c])=>{ if (a && c) addressIndex[normalizeAddressKey(a)] = (c||'').toString().trim(); });
+                    }
+                    return;
+                }
+                // Try CSV
+                res = await fetch('assets/data/calgary/addresses.csv', { cache: 'no-store' });
+                if (res.ok) {
+                    const text = await res.text();
+                    const lines = text.split(/\r?\n/).filter(Boolean);
+                    if (lines.length) {
+                        const headers = lines[0].split(',').map(h=>h.trim().toLowerCase());
+                        const ai = headers.findIndex(h=>['address','addr','full_address'].includes(h));
+                        const ci = headers.findIndex(h=>['community','neighbourhood','neighborhood'].includes(h));
+                        for (let i=1;i<lines.length;i++) {
+                            const cols = lines[i].split(',');
+                            const a = cols[ai]; const c = cols[ci];
+                            if (a && c) addressIndex[normalizeAddressKey(a)] = c.trim();
+                        }
+                    }
+                }
+            } catch(e) {
+                // ignore
             }
         }
 
@@ -166,6 +246,11 @@
             const address=addressInput.value.trim();
             if(!address){ showAlert('Please enter an address or postal code','error'); return; }
             if(Object.keys(wardIndex.community).length===0){ showAlert('Ward map not loaded yet. Please try again in a moment.', 'info'); return; }
+            // Try direct address -> community mapping first
+            const aiKey = normalizeAddressKey(address);
+            if (addressIndex[aiKey]) {
+                return lookupByCommunity(addressIndex[aiKey], { source: 'Address index' });
+            }
             const postalCodePattern=/^[A-Za-z]\d[A-Za-z][\s-]?\d[A-Za-z]\d$/;
             if(postalCodePattern.test(address)){ lookupByPostalCode(address); }
             else { geocodeAddress(address); }
@@ -229,8 +314,26 @@
         function showLoading(){ document.getElementById('resultsContainer').innerHTML=`<div class="loading"><div class="spinner"></div><p>Searching...</p></div>`; }
         function hideLoading(){ const loadingDiv=document.querySelector('.loading'); if(loadingDiv) loadingDiv.remove(); }
         function normalizeKey(value){ return value.toUpperCase().trim().replace(/\./g,'').replace(/-/g,' ').replace(/\s+/g,' ').replace(/\bN\s*E\b/g,'NE').replace(/\bN\s*W\b/g,'NW').replace(/\bS\s*E\b/g,'SE').replace(/\bS\s*W\b/g,'SW'); }
+        function normalizeAddressKey(v){
+            return (v||'')
+                .toUpperCase()
+                .replace(/CALGARY,?\s*AB/i,'')
+                .replace(/,\s*/g,' ')
+                .replace(/\./g,'')
+                .replace(/\bST\b/g,'STREET')
+                .replace(/\bAVE\b/g,'AVENUE')
+                .replace(/\bRD\b/g,'ROAD')
+                .replace(/\bDR\b/g,'DRIVE')
+                .replace(/\bNE\b|\bN E\b/g,'NE')
+                .replace(/\bNW\b|\bN W\b/g,'NW')
+                .replace(/\bSE\b|\bS E\b/g,'SE')
+                .replace(/\bSW\b|\bS W\b/g,'SW')
+                .replace(/\s+/g,' ')
+                .trim();
+        }
         initGoogleMaps();
         loadWardCommunities();
+        loadAddressIndex();
         document.addEventListener('click',function(e){ if(!addressInput.contains(e.target) && !dropdown.contains(e.target)){ dropdown.classList.remove('active'); } });
         addressInput.addEventListener('keypress',function(e){ if(e.key==='Enter'){ dropdown.classList.remove('active'); searchWard(); } });
     </script>
