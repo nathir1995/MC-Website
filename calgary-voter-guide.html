@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calgary Voter Guide - Find Your Ward & Candidates</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 20px; color: #333; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .header { text-align: center; color: white; margin-bottom: 40px; animation: fadeInDown 0.8s ease; }
+        .header h1 { font-size: 3rem; font-weight: 800; margin-bottom: 10px; text-shadow: 2px 2px 4px rgba(0,0,0,0.2); }
+        .header p { font-size: 1.2rem; opacity: 0.95; }
+        .main-card { background: white; border-radius: 24px; padding: 40px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); animation: fadeInUp 0.8s ease; margin-bottom: 30px; }
+        .search-section { margin-bottom: 30px; }
+        .input-group { position: relative; margin-bottom: 20px; }
+        .input-group label { display: block; font-weight: 600; margin-bottom: 8px; color: #555; font-size: 0.95rem; }
+        .address-input-wrapper { position: relative; }
+        input[type="text"] { width: 100%; padding: 18px 50px 18px 20px; font-size: 1.1rem; border: 2px solid #e0e0e0; border-radius: 16px; transition: all 0.3s ease; background: #f8f9fa; }
+        input[type="text"]:focus { outline: none; border-color: #667eea; background: white; box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1); }
+        .input-icon { position: absolute; right: 18px; top: 50%; transform: translateY(-50%); color: #999; }
+        .autocomplete-dropdown { position: absolute; top: 100%; left: 0; right: 0; background: white; border: 2px solid #e0e0e0; border-top: none; border-radius: 0 0 16px 16px; max-height: 300px; overflow-y: auto; z-index: 1000; box-shadow: 0 10px 30px rgba(0,0,0,0.1); display: none; }
+        .autocomplete-dropdown.active { display: block; }
+        .autocomplete-item { padding: 15px 20px; cursor: pointer; border-bottom: 1px solid #f0f0f0; transition: background 0.2s; }
+        .autocomplete-item:hover { background: #f8f9fa; }
+        .autocomplete-item:last-child { border-bottom: none; }
+        .search-btn { width: 100%; padding: 18px; font-size: 1.2rem; font-weight: 700; color: white; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none; border-radius: 16px; cursor: pointer; transition: all 0.3s ease; box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4); }
+        .search-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6); }
+        .search-btn:active { transform: translateY(0); }
+        .alert { padding: 16px 20px; border-radius: 12px; margin-bottom: 20px; display: flex; align-items: center; gap: 12px; animation: slideIn 0.4s ease; }
+        .alert-error { background: #fee; border: 2px solid #fcc; color: #c33; }
+        .alert-success { background: #efe; border: 2px solid #cfc; color: #3c3; }
+        .alert-info { background: #eef; border: 2px solid #ccf; color: #33c; }
+        .ward-badge { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 20px; text-align: center; margin-bottom: 30px; box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3); animation: scaleIn 0.5s ease; }
+        .ward-badge h2 { font-size: 1.5rem; margin-bottom: 10px; opacity: 0.9; }
+        .ward-badge .ward-number { font-size: 4rem; font-weight: 900; text-shadow: 2px 2px 4px rgba(0,0,0,0.2); }
+        .candidates-section { margin-bottom: 30px; }
+        .section-title { font-size: 1.8rem; font-weight: 700; margin-bottom: 20px; color: #333; display: flex; align-items: center; gap: 12px; }
+        .section-icon { width: 40px; height: 40px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; }
+        .mayor-icon { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
+        .councillor-icon { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
+        .candidate-list { display: flex; flex-direction: column; gap: 15px; }
+        .candidate-card { background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); padding: 20px 25px; border-radius: 16px; display: flex; align-items: center; gap: 20px; transition: all 0.3s ease; animation: slideInRight 0.5s ease; border: 2px solid transparent; }
+        .candidate-card:hover { transform: translateX(8px); border-color: #667eea; box-shadow: 0 8px 20px rgba(0,0,0,0.1); }
+        .rank-badge { width: 50px; height: 50px; border-radius: 50%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; font-weight: 900; flex-shrink: 0; box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4); }
+        .candidate-name { font-size: 1.3rem; font-weight: 600; color: #333; }
+        .loading { text-align: center; padding: 40px; color: #999; }
+        .spinner { border: 4px solid #f3f3f3; border-top: 4px solid #667eea; border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; margin: 0 auto 20px; }
+        .data-status { background: #f8f9fa; padding: 20px; border-radius: 16px; margin-bottom: 30px; border: 2px dashed #ddd; }
+        .data-status h3 { margin-bottom: 15px; color: #555; }
+        .file-input { display: none; }
+        .upload-btn { display: inline-block; padding: 12px 24px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 12px; cursor: pointer; font-weight: 600; transition: all 0.3s ease; margin-right: 10px; margin-bottom: 10px; }
+        .upload-btn:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4); }
+        .file-name { display: inline-block; color: #666; margin-left: 10px; font-size: 0.9rem; }
+        @keyframes fadeInDown { from { opacity: 0; transform: translateY(-30px);} to {opacity: 1; transform: translateY(0);} }
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(30px);} to {opacity: 1; transform: translateY(0);} }
+        @keyframes slideIn { from { opacity: 0; transform: translateX(-20px);} to {opacity: 1; transform: translateX(0);} }
+        @keyframes slideInRight { from { opacity: 0; transform: translateX(20px);} to {opacity: 1; transform: translateX(0);} }
+        @keyframes scaleIn { from { opacity: 0; transform: scale(0.9);} to {opacity: 1; transform: scale(1);} }
+        @keyframes spin { 0% { transform: rotate(0deg);} 100% { transform: rotate(360deg);} }
+        @media (max-width: 768px) { .header h1 { font-size: 2rem;} .main-card { padding: 25px;} .ward-badge .ward-number { font-size: 3rem;} .section-title { font-size: 1.4rem;} }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🗳️ Calgary Voter Guide</h1>
+            <p>Find your ward and recommended candidates</p>
+        </div>
+
+        <div class="main-card">
+            <div class="data-status">
+                <h3>📁 Data Files</h3>
+                <div>
+                    <label for="wardFile" class="upload-btn">Upload Ward Mapping CSV</label>
+                    <input type="file" id="wardFile" class="file-input" accept=".csv">
+                    <span id="wardFileName" class="file-name"></span>
+                </div>
+                <div>
+                    <label for="candidateFile" class="upload-btn">Upload Candidate CSV</label>
+                    <input type="file" id="candidateFile" class="file-input" accept=".csv">
+                    <span id="candidateFileName" class="file-name"></span>
+                </div>
+            </div>
+
+            <div class="search-section">
+                <div class="input-group">
+                    <label for="addressInput">Enter Your Address or Postal Code</label>
+                    <div class="address-input-wrapper">
+                        <input type="text" id="addressInput" placeholder="123 Main St SW, Calgary or T2P 3M5" autocomplete="off">
+                        <span class="input-icon">📍</span>
+                        <div id="autocompleteDropdown" class="autocomplete-dropdown"></div>
+                    </div>
+                </div>
+                <button class="search-btn" onclick="searchWard()">🔍 Find My Ward & Candidates</button>
+            </div>
+
+            <div id="alertContainer"></div>
+            <div id="resultsContainer"></div>
+        </div>
+    </div>
+
+    <script>
+        const GOOGLE_MAPS_API_KEY = 'AIzaSyCUwE9QZHo61wVzuEyPLbRwGv2fUipWSg0';
+        let wardIndex = { community: {}, postal: {}, fsa: {} };
+        let candidateData = { mayors: [], councillors: {} };
+        let autocompleteService = null;
+        let placesService = null;
+        let geocoder = null;
+
+        function initGoogleMaps() {
+            const script = document.createElement('script');
+            script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places&callback=initServices`;
+            script.async = true;
+            script.defer = true;
+            document.head.appendChild(script);
+        }
+        function initServices() {
+            autocompleteService = new google.maps.places.AutocompleteService();
+            geocoder = new google.maps.Geocoder();
+            const mapDiv = document.createElement('div');
+            placesService = new google.maps.places.PlacesService(mapDiv);
+        }
+
+        const wardFileInput = document.getElementById('wardFile');
+        const wardFileNameSpan = document.getElementById('wardFileName');
+        wardFileInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                wardFileNameSpan.textContent = file.name;
+                Papa.parse(file, {
+                    header: true,
+                    skipEmptyLines: true,
+                    complete: function(results) {
+                        wardIndex = { community: {}, postal: {}, fsa: {} };
+                        let communityCount = 0, postalCount = 0, fsaCount = 0;
+                        results.data.forEach(row => {
+                            const wardRaw = (row.Ward || row.WARD || row['Ward Number'] || row['Ward #'] || row['WARD_NUMBER'] || '').toString().trim();
+                            if (!wardRaw) return;
+                            const ward = wardRaw.replace(/^(Ward\s*)/i, '').trim();
+                            const communityRaw = (row.Community || row.COMMUNITY || row['Community Name'] || row['Neighbourhood'] || row.Neighborhood || '').toString().trim();
+                            if (communityRaw) { wardIndex.community[normalizeKey(communityRaw)] = ward; communityCount++; }
+                            const postalRaw = (row.Postal || row['Postal Code'] || row.PostalCode || row['POSTAL_CODE'] || '').toString().trim();
+                            if (postalRaw) { const postal = postalRaw.toUpperCase().replace(/\s+/g, ''); wardIndex.postal[postal] = ward; postalCount++; }
+                            const fsaRaw = (row.FSA || row.Prefix || row['Postal Prefix'] || '').toString().trim();
+                            if (fsaRaw) { const fsa = fsaRaw.toUpperCase().replace(/\s+/g, '').slice(0,3); if (fsa.length===3) { wardIndex.fsa[fsa] = ward; fsaCount++; } }
+                        });
+                        showAlert(`Ward mapping loaded: ${communityCount} communities, ${postalCount} postal codes, ${fsaCount} FSAs`, 'success');
+                    }
+                });
+            }
+        });
+
+        const candidateFileInput = document.getElementById('candidateFile');
+        const candidateFileNameSpan = document.getElementById('candidateFileName');
+        candidateFileInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                candidateFileNameSpan.textContent = file.name;
+                Papa.parse(file, {
+                    header: true,
+                    skipEmptyLines: true,
+                    complete: function(results) {
+                        candidateData = { mayors: [], councillors: {} };
+                        results.data.forEach(row => {
+                            if (row.Type && row.Name && row.Rank) {
+                                const candidate = { name: row.Name.trim(), rank: parseInt(row.Rank, 10) };
+                                const type = row.Type.toString().toLowerCase();
+                                if (type === 'mayor') {
+                                    candidateData.mayors.push(candidate);
+                                } else if (type === 'councillor' && row.Ward) {
+                                    const ward = row.Ward.toString().trim();
+                                    if (!candidateData.councillors[ward]) candidateData.councillors[ward] = [];
+                                    candidateData.councillors[ward].push(candidate);
+                                }
+                            }
+                        });
+                        candidateData.mayors.sort((a,b)=>a.rank-b.rank);
+                        Object.keys(candidateData.councillors).forEach(ward=>{ candidateData.councillors[ward].sort((a,b)=>a.rank-b.rank); });
+                        showAlert('Candidate data loaded successfully!', 'success');
+                    }
+                });
+            }
+        });
+
+        const addressInput = document.getElementById('addressInput');
+        const dropdown = document.getElementById('autocompleteDropdown');
+        let debounceTimer;
+        addressInput.addEventListener('input', function(e){
+            clearTimeout(debounceTimer);
+            const value = e.target.value;
+            if(!value || value.length<3 || !autocompleteService){ dropdown.classList.remove('active'); dropdown.innerHTML=''; return; }
+            debounceTimer = setTimeout(()=>{
+                const bounds = new google.maps.LatLngBounds(new google.maps.LatLng(50.8429,-114.3144), new google.maps.LatLng(51.2139,-113.8668));
+                autocompleteService.getPlacePredictions({ input:value, componentRestrictions:{country:'ca'}, bounds }, displaySuggestions);
+            },300);
+        });
+        function displaySuggestions(predictions,status){
+            dropdown.innerHTML='';
+            const ok = (google.maps.places.PlacesServiceStatus||{}).OK;
+            if(status!==ok || !predictions || predictions.length===0){ dropdown.classList.remove('active'); return; }
+            predictions.forEach(prediction=>{
+                const item=document.createElement('div');
+                item.className='autocomplete-item';
+                item.textContent=prediction.description;
+                item.addEventListener('click',()=>{
+                    addressInput.value=prediction.description;
+                    dropdown.classList.remove('active');
+                    if(placesService && prediction.place_id){
+                        placesService.getDetails({ placeId:prediction.place_id, fields:['address_components','geometry','name','formatted_address','types'] }, (place,detailStatus)=>{
+                            if(detailStatus===(google.maps.places.PlacesServiceStatus||{}).OK && place){
+                                const community=getCommunityFromComponents(place.address_components||[]);
+                                if(community){ lookupByCommunity(community,{source:'Google Places (neighborhood)'}); }
+                                else if(place.geometry && place.geometry.location){ reverseGeocode(place.geometry.location,'Google Places (reverse geocode)'); }
+                                else { geocodeAddress(prediction.description); }
+                            } else { geocodeAddress(prediction.description); }
+                        });
+                    } else { geocodeAddress(prediction.description); }
+                });
+                dropdown.appendChild(item);
+            });
+            dropdown.classList.add('active');
+        }
+
+        async function searchWard(){
+            const address=addressInput.value.trim();
+            if(!address){ showAlert('Please enter an address or postal code','error'); return; }
+            if(Object.keys(wardIndex.community).length===0 && Object.keys(wardIndex.postal).length===0 && Object.keys(wardIndex.fsa).length===0){ showAlert('Please upload the ward mapping CSV file first','error'); return; }
+            const postalCodePattern=/^[A-Za-z]\d[A-Za-z][\s-]?\d[A-Za-z]\d$/;
+            if(postalCodePattern.test(address)){ lookupByPostalCode(address); }
+            else { geocodeAddress(address); }
+        }
+        function geocodeAddress(address){
+            showLoading();
+            geocoder.geocode({ address: address + ', Calgary, AB' }, (results,status)=>{
+                if(status==='OK' && results && results.length){
+                    const best=results[0];
+                    const community=getCommunityFromComponents(best.address_components||[]);
+                    if(community){ lookupByCommunity(community,{source:'Google Geocoding'}); }
+                    else if(best.geometry && best.geometry.location){ reverseGeocode(best.geometry.location,'Google Geocoding (reverse)'); }
+                    else { showAlert('Could not determine community from address','error'); hideLoading(); }
+                } else { showAlert('Address not found. Please try a different address.','error'); hideLoading(); }
+            });
+        }
+        function reverseGeocode(latLng,source){
+            geocoder.geocode({ location: latLng }, (results,status)=>{
+                if(status==='OK' && results && results.length){
+                    for(let i=0;i<results.length;i++){
+                        const community=getCommunityFromComponents(results[i].address_components||[]);
+                        if(community){ lookupByCommunity(community,{source}); return; }
+                    }
+                    showAlert('Could not determine community from reverse geocoding','error'); hideLoading();
+                } else { showAlert('Reverse geocoding failed','error'); hideLoading(); }
+            });
+        }
+        function getCommunityFromComponents(components){
+            if(!components) return null; let neighborhood=null,sublocality=null,sublocalityLevel1=null,colloquial=null;
+            components.forEach(component=>{
+                const types=component.types||[];
+                if(types.includes('neighborhood')) neighborhood=component.long_name;
+                if(types.includes('sublocality')) sublocality=component.long_name;
+                if(types.includes('sublocality_level_1')) sublocalityLevel1=component.long_name;
+                if(types.includes('colloquial_area')) colloquial=component.long_name;
+            });
+            return neighborhood||sublocalityLevel1||sublocality||colloquial||null;
+        }
+        function lookupByCommunity(community,meta={}){
+            const key=normalizeKey(community);
+            const ward=wardIndex.community[key];
+            if(ward){ displayResults(ward,{source:meta.source||'Community match',community}); }
+            else { showAlert(`Community "${community}" not found in database`,'error'); hideLoading(); }
+        }
+        function lookupByPostalCode(postalCode){
+            showLoading();
+            const clean=postalCode.toUpperCase().replace(/\s+/g,'');
+            let ward=wardIndex.postal[clean];
+            if(!ward && clean.length>=3){
+                const fsa=clean.substring(0,3);
+                ward=wardIndex.fsa[fsa];
+                if(ward){ displayResults(ward,{source:'Postal FSA match',postal:fsa}); return; }
+            }
+            if(ward){ displayResults(ward,{source:'Full postal code match',postal:clean}); }
+            else { showAlert('Postal code not found in database','error'); hideLoading(); }
+        }
+        function displayResults(ward,options={}){
+            hideLoading(); dropdown.classList.remove('active');
+            const mayors=candidateData.mayors; const councillors=candidateData.councillors[ward]||[];
+            const sourceNote=options.source?`<div class="alert alert-success"><span>✅</span><span>Matched by ${options.source}${options.community?` – Community: ${options.community}`:''}${options.postal?` – Postal: ${options.postal}`:''}</span></div>`:'';
+            let html=`${sourceNote}<div class="ward-badge"><h2>Your Ward</h2><div class="ward-number">Ward ${ward}</div></div>`;
+            if(mayors.length>0){ html+=`<div class="candidates-section"><h3 class="section-title"><span class="section-icon mayor-icon">👤</span>Mayor Candidates</h3><div class="candidate-list">`; mayors.forEach((candidate,idx)=>{ html+=`<div class="candidate-card" style="animation-delay:${idx*0.1}s"><div class="rank-badge">${idx+1}</div><div class="candidate-name">${candidate.name}</div></div>`; }); html+=`</div></div>`; }
+            if(councillors.length>0){ html+=`<div class="candidates-section"><h3 class="section-title"><span class="section-icon councillor-icon">👥</span>Councillor Candidates (Ward ${ward})</h3><div class="candidate-list">`; councillors.forEach((candidate,idx)=>{ html+=`<div class="candidate-card" style="animation-delay:${(idx+mayors.length)*0.1}s"><div class="rank-badge">${idx+1}</div><div class="candidate-name">${candidate.name}</div></div>`; }); html+=`</div></div>`; }
+            if(mayors.length===0 && councillors.length===0){ html+=`<div class="alert alert-info"><span>ℹ️</span><span>No candidate data available. Please upload the candidate CSV file.</span></div>`; }
+            document.getElementById('resultsContainer').innerHTML=html;
+        }
+        function showAlert(message,type){
+            const alertContainer=document.getElementById('alertContainer');
+            const icons={ error:'❌', success:'✅', info:'ℹ️' };
+            alertContainer.innerHTML=`<div class="alert alert-${type}"><span>${icons[type]}</span><span>${message}</span></div>`;
+            setTimeout(()=>{ alertContainer.innerHTML=''; },5000);
+        }
+        function showLoading(){ document.getElementById('resultsContainer').innerHTML=`<div class="loading"><div class="spinner"></div><p>Searching...</p></div>`; }
+        function hideLoading(){ const loadingDiv=document.querySelector('.loading'); if(loadingDiv) loadingDiv.remove(); }
+        function normalizeKey(value){ return value.toUpperCase().trim().replace(/\./g,'').replace(/-/g,' ').replace(/\s+/g,' ').replace(/\bN\s*E\b/g,'NE').replace(/\bN\s*W\b/g,'NW').replace(/\bS\s*E\b/g,'SE').replace(/\bS\s*W\b/g,'SW'); }
+        initGoogleMaps();
+        document.addEventListener('click',function(e){ if(!addressInput.contains(e.target) && !dropdown.contains(e.target)){ dropdown.classList.remove('active'); } });
+        addressInput.addEventListener('keypress',function(e){ if(e.key==='Enter'){ dropdown.classList.remove('active'); searchWard(); } });
+    </script>
+</body>
+</html>
