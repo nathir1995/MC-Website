@@ -97,6 +97,63 @@
 
         const SUPABASE_JSON_URL = 'https://ajgqyygtstihrwjovhes.supabase.co/storage/v1/object/public/YYC%20addresses/filtered_property_data.json';
 
+        // Candidates loaded from tracker (calgary-2025.html) without modifying tracker
+        let trackerCandidates = null;
+        async function loadTrackerCandidates() {
+            try {
+                const res = await fetch('calgary-2025.html', { cache: 'no-store' });
+                if (!res.ok) return;
+                const html = await res.text();
+                const re = new RegExp('const\\s+candidates\\s*=\\s*\\[(.*?)\\];', 's');
+                const m = re.exec(html);
+                if (!m) return;
+                const body = m[1];
+                // Evaluate the JS array safely in a function scope
+                const arr = Function('"use strict"; return [' + body + '];')();
+                if (Array.isArray(arr)) trackerCandidates = arr;
+            } catch (e) {
+                // ignore
+            }
+        }
+
+        function parseTrusteeWards(wardField) {
+            const nums = String(wardField||'').match(/\d+/g) || [];
+            return nums.map(String);
+        }
+
+        function getCandidatesForWard(ward) {
+            const wardStr = String(ward);
+            const empty = { mayors: [], councillors: [], trustees: [] };
+            if (!Array.isArray(trackerCandidates) || trackerCandidates.length === 0) return empty;
+            const mayors = trackerCandidates.filter(c => c.position === 'Mayor');
+            const councillors = trackerCandidates.filter(c => c.position === 'Councillor' && String(c.ward||'') === wardStr);
+            const trustees = trackerCandidates.filter(c => /Trustee/i.test(String(c.position||'')) && parseTrusteeWards(c.ward).includes(wardStr));
+            return { mayors, councillors, trustees };
+        }
+
+        function renderWardCandidatesHTML(ward) {
+            const { mayors, councillors, trustees } = getCandidatesForWard(ward);
+            let html = '';
+            const renderList = (title, iconClass, items, wardLabel) => {
+                if (!items || items.length === 0) return '';
+                let s = `<div class="candidates-section"><h3 class="section-title"><span class="section-icon ${iconClass}">👤</span>${title}${wardLabel?` (${wardLabel})`:''}</h3><div class="candidate-list">`;
+                items.forEach((c, idx) => {
+                    const name = c.url ? `<a href="${c.url}" target="_blank" rel="noopener" class="candidate-name">${c.name}</a>` : `<span class="candidate-name">${c.name}</span>`;
+                    const party = c.party ? `<div class="small">${c.party}</div>` : '';
+                    const bullet = c.issue1 ? `<div class="small">• ${c.issue1}</div>` : '';
+                    s += `<div class="candidate-card" style="animation-delay:${idx*0.05}s">${name}${party}${bullet}</div>`;
+                });
+                s += `</div></div>`;
+                return s;
+            };
+            html += renderList('Mayor Candidates', 'mayor-icon', mayors, 'City-wide');
+            html += renderList(`Councillor Candidates`, 'councillor-icon', councillors, `Ward ${ward}`);
+            if (trustees && trustees.length) {
+                html += renderList('School Trustees', 'councillor-icon', trustees, `Ward ${ward}`);
+            }
+            return html;
+        }
+
         function initGoogleMaps() {
             const script = document.createElement('script');
             script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places&callback=initServices`;
@@ -443,6 +500,8 @@
             hideLoading(); dropdown.classList.remove('active');
             const sourceNote=options.source?`<div class="alert alert-success"><span>✅</span><span>Matched by ${options.source}${options.community?` – Community: ${options.community}`:''}${options.postal?` – Postal: ${options.postal}`:''}</span></div>`:'';
             let html=`${sourceNote}<div class="ward-badge"><h2>Your Ward</h2><div class="ward-number">Ward ${ward}</div></div>`;
+            // Append candidates fetched from tracker
+            html += renderWardCandidatesHTML(ward);
             document.getElementById('resultsContainer').innerHTML=html;
         }
         function showAlert(message,type){
@@ -474,6 +533,7 @@
         initGoogleMaps();
         loadWardCommunities().then(()=>{ loadPostalIndexFromSupabase(); });
         loadAddressIndex();
+        loadTrackerCandidates();
         document.addEventListener('click',function(e){ if(!addressInput.contains(e.target) && !dropdown.contains(e.target)){ dropdown.classList.remove('active'); } });
         addressInput.addEventListener('keypress',function(e){ if(e.key==='Enter'){ dropdown.classList.remove('active'); searchWard(); } });
     </script>
