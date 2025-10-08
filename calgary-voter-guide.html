@@ -210,22 +210,29 @@
         async function loadAddressIndex() {
             try {
                 addressIndex = {};
-                // Prefer JSON
-                let res = await fetch('assets/data/calgary/addresses.json', { cache: 'no-store' });
+                // Preferred: Power BI exported JSON from YYC addresses.pbit
+                let res = await fetch('assets/data/calgary/yyc-addresses.json', { cache: 'no-store' });
                 if (res.ok) {
                     const data = await res.json();
-                    // Expect [{address, community}] or { address: community }
+                    // Expect array of { address, community }
+                    (Array.isArray(data) ? data : []).forEach(row => {
+                        const a = (row.address||row.Address||row.ADDRESS||'').toString();
+                        const c = (row.community||row.Community||row.COMMUNITY||'').toString();
+                        if (a && c) addressIndex[normalizeAddressKey(a)] = c.trim();
+                    });
+                    return;
+                }
+                // Fallbacks: generic JSON or CSV
+                res = await fetch('assets/data/calgary/addresses.json', { cache: 'no-store' });
+                if (res.ok) {
+                    const data = await res.json();
                     if (Array.isArray(data)) {
-                        data.forEach(row => {
-                            if (!row) return; const a = row.address||row.Address||row.ADDRESS; const c = row.community||row.Community||row.COMMUNITY;
-                            if (a && c) addressIndex[normalizeAddressKey(a)] = c.toString().trim();
-                        });
+                        data.forEach(row => { const a=row.address||row.Address||row.ADDRESS; const c=row.community||row.Community||row.COMMUNITY; if (a&&c) addressIndex[normalizeAddressKey(a)]=c.toString().trim(); });
                     } else {
                         Object.entries(data||{}).forEach(([a,c])=>{ if (a && c) addressIndex[normalizeAddressKey(a)] = (c||'').toString().trim(); });
                     }
                     return;
                 }
-                // Try CSV
                 res = await fetch('assets/data/calgary/addresses.csv', { cache: 'no-store' });
                 if (res.ok) {
                     const text = await res.text();
@@ -234,11 +241,7 @@
                         const headers = lines[0].split(',').map(h=>h.trim().toLowerCase());
                         const ai = headers.findIndex(h=>['address','addr','full_address'].includes(h));
                         const ci = headers.findIndex(h=>['community','neighbourhood','neighborhood'].includes(h));
-                        for (let i=1;i<lines.length;i++) {
-                            const cols = lines[i].split(',');
-                            const a = cols[ai]; const c = cols[ci];
-                            if (a && c) addressIndex[normalizeAddressKey(a)] = c.trim();
-                        }
+                        for (let i=1;i<lines.length;i++) { const cols = lines[i].split(','); const a=cols[ai]; const c=cols[ci]; if (a&&c) addressIndex[normalizeAddressKey(a)] = c.trim(); }
                     }
                 }
             } catch(e) {
