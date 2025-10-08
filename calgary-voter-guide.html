@@ -284,20 +284,23 @@
                     const tryPaths = async (path) => {
                         const res = await fetch(path, { cache: 'no-store' });
                         if (!res.ok) return false;
-                        const ct = res.headers.get('content-type')||'';
-                        if (ct.includes('application/json')) {
-                            const arr = await res.json();
-                            if (Array.isArray(arr)) return arr;
-                            return false;
-                        } else {
+                        // If file extension is .json, try to parse JSON regardless of content-type
+                        if (/\.json($|\?)/i.test(path)) {
+                            try {
+                                const arr = await res.json();
+                                if (Array.isArray(arr)) return arr;
+                            } catch {}
+                            // Fallback to text parsing if JSON parse failed
                             const txt = await res.text();
-                            // CSV (first column) or newline list
-                            const lines = txt.split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
-                            if (lines.length===0) return [];
-                            // If header looks like it, skip first when it contains letters beyond commas
-                            const startIdx = lines[0].toLowerCase().includes('community') ? 1 : 0;
-                            return lines.slice(startIdx).map(l=>l.split(',')[0].trim());
+                            try { const arr = JSON.parse(txt); if (Array.isArray(arr)) return arr; } catch {}
+                            return false;
                         }
+                        // CSV (first column) or newline list
+                        const txt = await res.text();
+                        const lines = txt.split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
+                        if (lines.length===0) return [];
+                        const startIdx = lines[0].toLowerCase().includes('community') ? 1 : 0;
+                        return lines.slice(startIdx).map(l=>l.split(',')[0].trim());
                     };
                     for (let i=1;i<=14;i++) {
                         const wardNum = String(i);
@@ -468,6 +471,7 @@
 
         const addressInput = document.getElementById('addressInput');
         const dropdown = document.getElementById('autocompleteDropdown');
+        const PROXY_HEADERS = (window.SUPABASE_ANON_KEY ? { apikey: window.SUPABASE_ANON_KEY, Authorization: `Bearer ${window.SUPABASE_ANON_KEY}` } : {});
         let debounceTimer;
         addressInput.addEventListener('input', function(e){
             clearTimeout(debounceTimer);
@@ -481,10 +485,12 @@
             debounceTimer = setTimeout(async ()=>{
                 try {
                     const target = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(value)}&components=country:ca&sessiontoken=${encodeURIComponent(gmapsSessionToken)}`;
-                    const res = await fetch(`${MAPS_PROXY_BASE}?target=${encodeURIComponent(target)}`);
+                    const res = await fetch(`${MAPS_PROXY_BASE}?target=${encodeURIComponent(target)}`, { headers: PROXY_HEADERS, cache: 'no-store' });
                     if (!res.ok) { dropdown.classList.remove('active'); dropdown.innerHTML=''; return; }
                     const data = await res.json();
-                    const preds = Array.isArray(data.predictions) ? data.predictions : [];
+                    let preds = Array.isArray(data.predictions) ? data.predictions : [];
+                    // Prefer Calgary suggestions
+                    preds = preds.filter(p => /calgary/i.test(p.description||''));
                     displaySuggestions(preds);
                 } catch { dropdown.classList.remove('active'); dropdown.innerHTML=''; }
             },300);
@@ -509,7 +515,7 @@
         async function handlePlaceDetails(placeId, fallbackText){
             try {
                 const target = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${encodeURIComponent(placeId)}&fields=address_component,geometry,formatted_address`;
-                const res = await fetch(`${MAPS_PROXY_BASE}?target=${encodeURIComponent(target)}`);
+                const res = await fetch(`${MAPS_PROXY_BASE}?target=${encodeURIComponent(target)}`, { headers: PROXY_HEADERS, cache: 'no-store' });
                 if (res.ok) {
                     const data = await res.json();
                     const place = data && (data.result || data);
@@ -541,7 +547,7 @@
             showLoading();
             try {
                 const target = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address + ', Calgary, AB')}`;
-                const res = await fetch(`${MAPS_PROXY_BASE}?target=${encodeURIComponent(target)}`);
+                const res = await fetch(`${MAPS_PROXY_BASE}?target=${encodeURIComponent(target)}`, { headers: PROXY_HEADERS, cache: 'no-store' });
                 if (!res.ok) { showAlert('Address not found. Please try a different address.','error'); hideLoading(); return; }
                 const data = await res.json();
                 const results = data && data.results;
@@ -562,7 +568,7 @@
         async function reverseGeocode(latLng,source){
             try {
                 const target = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${encodeURIComponent(latLng.lat+','+latLng.lng)}`;
-                const res = await fetch(`${MAPS_PROXY_BASE}?target=${encodeURIComponent(target)}`);
+                const res = await fetch(`${MAPS_PROXY_BASE}?target=${encodeURIComponent(target)}`, { headers: PROXY_HEADERS, cache: 'no-store' });
                 if (!res.ok) { showAlert('Reverse geocoding failed','error'); hideLoading(); return; }
                 const data = await res.json();
                 const results = data && data.results;
