@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Calgary Voter Guide - Find Your Ward & Candidates</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+    
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 20px; color: #333; }
@@ -47,12 +47,7 @@
         .candidate-name { font-size: 1.3rem; font-weight: 600; color: #333; }
         .loading { text-align: center; padding: 40px; color: #999; }
         .spinner { border: 4px solid #f3f3f3; border-top: 4px solid #667eea; border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; margin: 0 auto 20px; }
-        .data-status { background: #f8f9fa; padding: 20px; border-radius: 16px; margin-bottom: 30px; border: 2px dashed #ddd; }
-        .data-status h3 { margin-bottom: 15px; color: #555; }
-        .file-input { display: none; }
-        .upload-btn { display: inline-block; padding: 12px 24px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 12px; cursor: pointer; font-weight: 600; transition: all 0.3s ease; margin-right: 10px; margin-bottom: 10px; }
-        .upload-btn:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4); }
-        .file-name { display: inline-block; color: #666; margin-left: 10px; font-size: 0.9rem; }
+        .info-note { background: #f8f9fa; padding: 16px; border-radius: 12px; border: 2px dashed #ddd; color: #555; margin-bottom: 20px; }
         @keyframes fadeInDown { from { opacity: 0; transform: translateY(-30px);} to {opacity: 1; transform: translateY(0);} }
         @keyframes fadeInUp { from { opacity: 0; transform: translateY(30px);} to {opacity: 1; transform: translateY(0);} }
         @keyframes slideIn { from { opacity: 0; transform: translateX(-20px);} to {opacity: 1; transform: translateX(0);} }
@@ -70,19 +65,7 @@
         </div>
 
         <div class="main-card">
-            <div class="data-status">
-                <h3>📁 Data Files</h3>
-                <div>
-                    <label for="wardFile" class="upload-btn">Upload Ward Mapping CSV</label>
-                    <input type="file" id="wardFile" class="file-input" accept=".csv">
-                    <span id="wardFileName" class="file-name"></span>
-                </div>
-                <div>
-                    <label for="candidateFile" class="upload-btn">Upload Candidate CSV</label>
-                    <input type="file" id="candidateFile" class="file-input" accept=".csv">
-                    <span id="candidateFileName" class="file-name"></span>
-                </div>
-            </div>
+            <div class="info-note">Enter your address to find your Calgary ward. This tool uses ward-to-community files from the site repository.</div>
 
             <div class="search-section">
                 <div class="input-group">
@@ -103,8 +86,7 @@
 
     <script>
         const GOOGLE_MAPS_API_KEY = 'AIzaSyCUwE9QZHo61wVzuEyPLbRwGv2fUipWSg0';
-        let wardIndex = { community: {}, postal: {}, fsa: {} };
-        let candidateData = { mayors: [], councillors: {} };
+        let wardIndex = { community: {} };
         let autocompleteService = null;
         let placesService = null;
         let geocoder = null;
@@ -123,66 +105,23 @@
             placesService = new google.maps.places.PlacesService(mapDiv);
         }
 
-        const wardFileInput = document.getElementById('wardFile');
-        const wardFileNameSpan = document.getElementById('wardFileName');
-        wardFileInput.addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            if (file) {
-                wardFileNameSpan.textContent = file.name;
-                Papa.parse(file, {
-                    header: true,
-                    skipEmptyLines: true,
-                    complete: function(results) {
-                        wardIndex = { community: {}, postal: {}, fsa: {} };
-                        let communityCount = 0, postalCount = 0, fsaCount = 0;
-                        results.data.forEach(row => {
-                            const wardRaw = (row.Ward || row.WARD || row['Ward Number'] || row['Ward #'] || row['WARD_NUMBER'] || '').toString().trim();
-                            if (!wardRaw) return;
-                            const ward = wardRaw.replace(/^(Ward\s*)/i, '').trim();
-                            const communityRaw = (row.Community || row.COMMUNITY || row['Community Name'] || row['Neighbourhood'] || row.Neighborhood || '').toString().trim();
-                            if (communityRaw) { wardIndex.community[normalizeKey(communityRaw)] = ward; communityCount++; }
-                            const postalRaw = (row.Postal || row['Postal Code'] || row.PostalCode || row['POSTAL_CODE'] || '').toString().trim();
-                            if (postalRaw) { const postal = postalRaw.toUpperCase().replace(/\s+/g, ''); wardIndex.postal[postal] = ward; postalCount++; }
-                            const fsaRaw = (row.FSA || row.Prefix || row['Postal Prefix'] || '').toString().trim();
-                            if (fsaRaw) { const fsa = fsaRaw.toUpperCase().replace(/\s+/g, '').slice(0,3); if (fsa.length===3) { wardIndex.fsa[fsa] = ward; fsaCount++; } }
-                        });
-                        showAlert(`Ward mapping loaded: ${communityCount} communities, ${postalCount} postal codes, ${fsaCount} FSAs`, 'success');
-                    }
+        // Load ward-to-community mapping from repository file
+        async function loadWardCommunities() {
+            try {
+                const res = await fetch('assets/data/calgary/ward-communities.json', { cache: 'no-store' });
+                if (!res.ok) throw new Error('mapping not found');
+                const data = await res.json();
+                wardIndex.community = {};
+                Object.entries(data || {}).forEach(([ward, communities]) => {
+                    (communities || []).forEach(name => {
+                        wardIndex.community[normalizeKey(name)] = ward.toString().replace(/^(Ward\s*)/i,'').trim();
+                    });
                 });
+                showAlert('Ward map loaded from repository.', 'success');
+            } catch (e) {
+                showAlert('Ward mapping file not found. Please add assets/data/calgary/ward-communities.json', 'info');
             }
-        });
-
-        const candidateFileInput = document.getElementById('candidateFile');
-        const candidateFileNameSpan = document.getElementById('candidateFileName');
-        candidateFileInput.addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            if (file) {
-                candidateFileNameSpan.textContent = file.name;
-                Papa.parse(file, {
-                    header: true,
-                    skipEmptyLines: true,
-                    complete: function(results) {
-                        candidateData = { mayors: [], councillors: {} };
-                        results.data.forEach(row => {
-                            if (row.Type && row.Name && row.Rank) {
-                                const candidate = { name: row.Name.trim(), rank: parseInt(row.Rank, 10) };
-                                const type = row.Type.toString().toLowerCase();
-                                if (type === 'mayor') {
-                                    candidateData.mayors.push(candidate);
-                                } else if (type === 'councillor' && row.Ward) {
-                                    const ward = row.Ward.toString().trim();
-                                    if (!candidateData.councillors[ward]) candidateData.councillors[ward] = [];
-                                    candidateData.councillors[ward].push(candidate);
-                                }
-                            }
-                        });
-                        candidateData.mayors.sort((a,b)=>a.rank-b.rank);
-                        Object.keys(candidateData.councillors).forEach(ward=>{ candidateData.councillors[ward].sort((a,b)=>a.rank-b.rank); });
-                        showAlert('Candidate data loaded successfully!', 'success');
-                    }
-                });
-            }
-        });
+        }
 
         const addressInput = document.getElementById('addressInput');
         const dropdown = document.getElementById('autocompleteDropdown');
@@ -226,7 +165,7 @@
         async function searchWard(){
             const address=addressInput.value.trim();
             if(!address){ showAlert('Please enter an address or postal code','error'); return; }
-            if(Object.keys(wardIndex.community).length===0 && Object.keys(wardIndex.postal).length===0 && Object.keys(wardIndex.fsa).length===0){ showAlert('Please upload the ward mapping CSV file first','error'); return; }
+            if(Object.keys(wardIndex.community).length===0){ showAlert('Ward map not loaded yet. Please try again in a moment.', 'info'); return; }
             const postalCodePattern=/^[A-Za-z]\d[A-Za-z][\s-]?\d[A-Za-z]\d$/;
             if(postalCodePattern.test(address)){ lookupByPostalCode(address); }
             else { geocodeAddress(address); }
@@ -272,25 +211,13 @@
             else { showAlert(`Community "${community}" not found in database`,'error'); hideLoading(); }
         }
         function lookupByPostalCode(postalCode){
-            showLoading();
-            const clean=postalCode.toUpperCase().replace(/\s+/g,'');
-            let ward=wardIndex.postal[clean];
-            if(!ward && clean.length>=3){
-                const fsa=clean.substring(0,3);
-                ward=wardIndex.fsa[fsa];
-                if(ward){ displayResults(ward,{source:'Postal FSA match',postal:fsa}); return; }
-            }
-            if(ward){ displayResults(ward,{source:'Full postal code match',postal:clean}); }
-            else { showAlert('Postal code not found in database','error'); hideLoading(); }
+            // For now, prefer address geocoding or neighborhood; postal-to-ward not supported without mapping file
+            geocodeAddress(postalCode);
         }
         function displayResults(ward,options={}){
             hideLoading(); dropdown.classList.remove('active');
-            const mayors=candidateData.mayors; const councillors=candidateData.councillors[ward]||[];
             const sourceNote=options.source?`<div class="alert alert-success"><span>✅</span><span>Matched by ${options.source}${options.community?` – Community: ${options.community}`:''}${options.postal?` – Postal: ${options.postal}`:''}</span></div>`:'';
             let html=`${sourceNote}<div class="ward-badge"><h2>Your Ward</h2><div class="ward-number">Ward ${ward}</div></div>`;
-            if(mayors.length>0){ html+=`<div class="candidates-section"><h3 class="section-title"><span class="section-icon mayor-icon">👤</span>Mayor Candidates</h3><div class="candidate-list">`; mayors.forEach((candidate,idx)=>{ html+=`<div class="candidate-card" style="animation-delay:${idx*0.1}s"><div class="rank-badge">${idx+1}</div><div class="candidate-name">${candidate.name}</div></div>`; }); html+=`</div></div>`; }
-            if(councillors.length>0){ html+=`<div class="candidates-section"><h3 class="section-title"><span class="section-icon councillor-icon">👥</span>Councillor Candidates (Ward ${ward})</h3><div class="candidate-list">`; councillors.forEach((candidate,idx)=>{ html+=`<div class="candidate-card" style="animation-delay:${(idx+mayors.length)*0.1}s"><div class="rank-badge">${idx+1}</div><div class="candidate-name">${candidate.name}</div></div>`; }); html+=`</div></div>`; }
-            if(mayors.length===0 && councillors.length===0){ html+=`<div class="alert alert-info"><span>ℹ️</span><span>No candidate data available. Please upload the candidate CSV file.</span></div>`; }
             document.getElementById('resultsContainer').innerHTML=html;
         }
         function showAlert(message,type){
@@ -303,6 +230,7 @@
         function hideLoading(){ const loadingDiv=document.querySelector('.loading'); if(loadingDiv) loadingDiv.remove(); }
         function normalizeKey(value){ return value.toUpperCase().trim().replace(/\./g,'').replace(/-/g,' ').replace(/\s+/g,' ').replace(/\bN\s*E\b/g,'NE').replace(/\bN\s*W\b/g,'NW').replace(/\bS\s*E\b/g,'SE').replace(/\bS\s*W\b/g,'SW'); }
         initGoogleMaps();
+        loadWardCommunities();
         document.addEventListener('click',function(e){ if(!addressInput.contains(e.target) && !dropdown.contains(e.target)){ dropdown.classList.remove('active'); } });
         addressInput.addEventListener('keypress',function(e){ if(e.key==='Enter'){ dropdown.classList.remove('active'); searchWard(); } });
     </script>
