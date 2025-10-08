@@ -256,11 +256,23 @@
             try {
                 const res = await fetch(SUPABASE_JSON_URL, { cache: 'force-cache' });
                 if (!res.ok) return; // silently skip if not available
-                const data = await res.json();
-                const rows = Array.isArray(data) ? data : (data.records || []);
+                const rawText = await res.text();
+                let rows = [];
+                try {
+                    const parsed = JSON.parse(rawText);
+                    rows = Array.isArray(parsed) ? parsed : (parsed.records || []);
+                } catch {
+                    // NDJSON fallback: one JSON object per line
+                    rows = rawText
+                        .split(/\r?\n/)
+                        .map(l => l.trim())
+                        .filter(Boolean)
+                        .map(l => { try { return JSON.parse(l); } catch { return null; } })
+                        .filter(Boolean);
+                }
                 if (!rows || rows.length === 0) return;
 
-                const communityKeys = ['community','Community','COMMUNITY','NEIGHBOURHOOD','Neighbourhood','NEIGHBORHOOD'];
+                const communityKeys = ['community','Community','COMMUNITY','NEIGHBOURHOOD','Neighbourhood','NEIGHBORHOOD','COMM_NAME','CommunityName','NEIGHBOURHOOD_NAME','NEIGHBOURHOOD NAME'];
                 const postalKeys = ['postal','Postal','postal_code','PostalCode','POSTAL_CODE','POSTCODE','Postcode'];
                 const addressKeys = ['address','Address','ADDRESS','full_address','FullAddress','FULL_ADDRESS','street_address','StreetAddress'];
 
@@ -295,6 +307,8 @@
                 }
                 if (addedPostal || addedFsa || addedAddr) {
                     showAlert(`Loaded address index from Supabase (${addedPostal} postal, ${addedFsa} FSA, ${addedAddr} addresses)`, 'success');
+                } else {
+                    showAlert('Loaded address index from Supabase', 'success');
                 }
             } catch (e) {
                 // ignore network/parse errors to keep tool functional
