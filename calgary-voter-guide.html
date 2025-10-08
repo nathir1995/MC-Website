@@ -98,26 +98,15 @@
             </div>
 
             <div id="alertContainer"></div>
-            <div class="sort-bar">
-                <div style="font-weight:800;color:#111827">Sort:</div>
-                <label class="chip-toggle"><input type="radio" name="rankMode" value="alpha" checked> A–Z</label>
-                <label class="chip-toggle"><input type="radio" name="rankMode" value="muslim"> Muslim community priorities</label>
-                <div style="flex:1"></div>
-                <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center">
-                    <label class="chip-toggle"><input type="checkbox" value="affordability"> Affordability</label>
-                    <label class="chip-toggle"><input type="checkbox" value="housing"> Housing</label>
-                    <label class="chip-toggle"><input type="checkbox" value="safety"> Safety (prevention)</label>
-                    <label class="chip-toggle"><input type="checkbox" value="transit"> Transit</label>
-                    <label class="chip-toggle"><input type="checkbox" value="inclusion"> Inclusion</label>
-                    <label class="chip-toggle"><input type="checkbox" value="business"> Small business</label>
-                </div>
-            </div>
+            
             <div id="resultsContainer"></div>
         </div>
     </div>
 
     <script>
-        const GOOGLE_MAPS_API_KEY = 'AIzaSyCUwE9QZHo61wVzuEyPLbRwGv2fUipWSg0';
+        // Load Google Maps API key from Supabase (public JSON), to avoid hardcoding
+        let GOOGLE_MAPS_API_KEY = '';
+        const SUPABASE_CONFIG_URL = 'https://ajgqyygtstihrwjovhes.supabase.co/storage/v1/object/public/YYC%20addresses/maps_config.json';
         let wardIndex = { community: {}, postal: {}, fsa: {} };
         let wardCommunities = {}; // ward -> [communities]
         let addressIndex = {}; // normalizedAddress -> community
@@ -253,9 +242,18 @@
             return items;
         }
 
-        function initGoogleMaps() {
+        async function initGoogleMaps() {
+            try {
+                if (!GOOGLE_MAPS_API_KEY) {
+                    const res = await fetch(SUPABASE_CONFIG_URL, { cache: 'no-store' });
+                    if (res.ok) {
+                        const cfg = await res.json();
+                        GOOGLE_MAPS_API_KEY = (cfg.googleMapsApiKey || cfg.GOOGLE_MAPS_API_KEY || '').trim();
+                    }
+                }
+            } catch {}
             const script = document.createElement('script');
-            script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places&callback=initServices`;
+            script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(GOOGLE_MAPS_API_KEY)}&libraries=places&callback=initServices`;
             script.async = true;
             script.defer = true;
             document.head.appendChild(script);
