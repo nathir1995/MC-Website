@@ -67,7 +67,7 @@
         </div>
 
         <div class="main-card">
-            <div class="info-note">Enter your address to find your Calgary ward. This tool maps your address to a community, then matches the community to the correct ward using ward-specific files from the repository.<div class="small" style="margin-top:8px;">Data sources: <code>assets/data/calgary/addresses.(json|csv)</code>, <code>assets/data/calgary/wards/ward-#.json|.csv|.txt</code>, and reference PDFs <code>assets/data/calgary/pdfs/ward-#-map.pdf</code>.</div></div>
+            <div class="info-note">Enter your address to find your Calgary ward.</div>
 
             <div class="search-section">
                 <div class="input-group">
@@ -125,7 +125,7 @@
                         });
                     });
                 } else {
-                    // Try ward-#.json|.csv|.txt files
+                    // Try ward-#.json|.csv|.txt files, then PDF fallback
                     wardIndex.community = {};
                     wardCommunities = {};
                     const tryPaths = async (path) => {
@@ -157,6 +157,9 @@
                         for (const p of candidates) {
                             try { const res = await tryPaths(p); if (res!==false) { list = res; break; } } catch {}
                         }
+                        if (!list || !Array.isArray(list) || list.length===0) {
+                            try { list = await extractCommunitiesFromPdf(wardNum); } catch {}
+                        }
                         if (Array.isArray(list)) {
                             wardCommunities[wardNum] = list.slice();
                             list.forEach(name => { if (name) wardIndex.community[normalizeKey(name)] = wardNum; });
@@ -167,6 +170,39 @@
                 else showAlert('Ward mapping files not found. Please add assets/data/calgary/wards/ward-#.json|.csv|.txt', 'info');
             } catch (e) {
                 showAlert('Ward mapping files not found in repository.', 'info');
+            }
+        }
+
+        // PDF fallback (uses pdf.js) to extract community names from ward-#-map.pdf
+        async function extractCommunitiesFromPdf(wardNum) {
+            if (!window['pdfjsLib']) return null;
+            try {
+                const url = `assets/data/calgary/pdfs/ward-${wardNum}-map.pdf`;
+                const loadingTask = pdfjsLib.getDocument(url);
+                const pdf = await loadingTask.promise;
+                let text = '';
+                for (let p = 1; p <= pdf.numPages; p++) {
+                    const page = await pdf.getPage(p);
+                    const content = await page.getTextContent();
+                    text += content.items.map(i => i.str).join('\n') + '\n';
+                }
+                const lines = text.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+                const names = new Set();
+                for (const line of lines) {
+                    if (/COMM[_\s-]*CODE/i.test(line) || /NAME/i.test(line)) continue;
+                    const m = line.match(/^([A-Z]{2,5})\s+(.+?)$/);
+                    if (m) {
+                        const name = m[2]
+                          .replace(/\s{2,}/g, ' ')
+                          .replace(/\s+\d+$/, '')
+                          .trim();
+                        if (name && name.length >= 3 && name.length <= 60) names.add(name);
+                    }
+                }
+                const arr = Array.from(names);
+                return arr.length ? arr : null;
+            } catch (e) {
+                return null;
             }
         }
 
@@ -309,11 +345,7 @@
         function displayResults(ward,options={}){
             hideLoading(); dropdown.classList.remove('active');
             const sourceNote=options.source?`<div class="alert alert-success"><span>✅</span><span>Matched by ${options.source}${options.community?` – Community: ${options.community}`:''}${options.postal?` – Postal: ${options.postal}`:''}</span></div>`:'';
-            const pdfHref = `assets/data/calgary/pdfs/ward-${ward}-map.pdf`;
             let html=`${sourceNote}<div class="ward-badge"><h2>Your Ward</h2><div class="ward-number">Ward ${ward}</div></div>`;
-            html += `<div class="info-note" style="margin-top:12px; text-align:center;">
-              <a href="${pdfHref}" target="_blank" rel="noopener" style="text-decoration:none; font-weight:700;">📄 View official Ward ${ward} map (PDF)</a>
-            </div>`;
             document.getElementById('resultsContainer').innerHTML=html;
         }
         function showAlert(message,type){
