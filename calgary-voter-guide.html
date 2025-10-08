@@ -41,6 +41,7 @@
         .section-icon { width: 40px; height: 40px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; }
         .mayor-icon { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
         .councillor-icon { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
+        .section-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; align-items: start; }
         .candidate-list { display: flex; flex-direction: column; gap: 15px; }
         .candidate-card { background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); padding: 20px 25px; border-radius: 16px; display: flex; align-items: center; gap: 20px; transition: all 0.3s ease; animation: slideInRight 0.5s ease; border: 2px solid transparent; }
         .candidate-card:hover { transform: translateX(8px); border-color: #667eea; box-shadow: 0 8px 20px rgba(0,0,0,0.1); }
@@ -213,21 +214,43 @@
                 let s = `<div class="candidates-section"><h3 class="section-title"><span class="section-icon ${iconClass}">👤</span>${title}${wardLabel?` (${wardLabel})`:''}</h3><div class="candidate-list">`;
                 list.forEach((c, idx) => {
                     const name = c.url ? `<a href="${c.url}" target="_blank" rel="noopener" class="candidate-name">${c.name}</a>` : `<span class="candidate-name">${c.name}</span>`;
-                    const showParty = c.party && c.party !== 'N/A';
-                    const party = showParty ? `<div class="small">${c.party}</div>` : '';
+                    const party = '';
                     const isAcclamation = (c.name||'').trim().toLowerCase().includes('acclamation');
                     if (isAcclamation) return; // skip rendering
                     const bullet = c.issue1 ? `<div class="small">• ${c.issue1}</div>` : '';
-                    s += `<div class="candidate-card" style="animation-delay:${idx*0.05}s"><div class=\"rank-badge\">${idx+1}</div>${name}${party}${bullet}</div>`;
+                    s += `<div class="candidate-card" style="animation-delay:${idx*0.05}s">${name}</div>`;
                 });
                 s += `</div></div>`;
                 return s;
             };
-            html += renderList('Mayor Candidates', 'mayor-icon', mayors, 'City-wide');
-            html += renderList(`Councillor Candidates`, 'councillor-icon', councillors, `Ward ${ward}`);
-            html += renderList('Public School Trustees (CBE)', 'councillor-icon', cbeTrustees, `Ward ${ward}`);
-            html += renderList('Catholic School Trustees (CCSD)', 'councillor-icon', ccsdTrustees, `Ward ${ward}`);
+            html += `<div class=\"section-grid\">`+
+                    renderList('Mayor Candidates', 'mayor-icon', mayors, 'City-wide')+
+                    renderList(`Councillor Candidates`, 'councillor-icon', moveWard8ToFront(councillors), `Ward ${ward}`)+
+                    renderList('Public School Trustees (CBE)', 'councillor-icon', cbeTrustees, `Ward ${ward}`)+
+                    renderList('Catholic School Trustees (CCSD)', 'councillor-icon', ccsdTrustees, `Ward ${ward}`)+
+                    `</div>`;
             return html;
+        }
+
+        function moveWard8ToFront(items) {
+            // If ward 8 list includes Nathaniel Schmidt or Jon Nishimura, keep them first
+            // Otherwise return items unchanged; this only affects councillors list ordering display
+            try {
+                const names = items.map(i => (i.name||'').toLowerCase());
+                const idxNate = names.indexOf('nathaniel schmidt');
+                const idxJon = names.indexOf('jon nishimura');
+                if (idxNate > -1 || idxJon > -1) {
+                    const copy = items.slice();
+                    const picked = [];
+                    if (idxNate > -1) picked.push(copy.splice(idxNate,1)[0]);
+                    if (idxJon > -1) {
+                        const newIdxJon = copy.findIndex(x => (x.name||'').toLowerCase()==='jon nishimura');
+                        if (newIdxJon>-1) picked.push(copy.splice(newIdxJon,1)[0]);
+                    }
+                    return picked.concat(copy);
+                }
+            } catch {}
+            return items;
         }
 
         function initGoogleMaps() {
