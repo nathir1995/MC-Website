@@ -480,7 +480,8 @@
             if(!value || value.length<3){ dropdown.classList.remove('active'); dropdown.innerHTML=''; return; }
             debounceTimer = setTimeout(async ()=>{
                 try {
-                    const res = await fetch(`${MAPS_PROXY_BASE}?mode=autocomplete&q=${encodeURIComponent(value)}&sessiontoken=${encodeURIComponent(gmapsSessionToken)}`);
+                    const target = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(value)}&components=country:ca&sessiontoken=${encodeURIComponent(gmapsSessionToken)}`;
+                    const res = await fetch(`${MAPS_PROXY_BASE}?target=${encodeURIComponent(target)}`);
                     if (!res.ok) { dropdown.classList.remove('active'); dropdown.innerHTML=''; return; }
                     const data = await res.json();
                     const preds = Array.isArray(data.predictions) ? data.predictions : [];
@@ -507,7 +508,8 @@
         }
         async function handlePlaceDetails(placeId, fallbackText){
             try {
-                const res = await fetch(`${MAPS_PROXY_BASE}?mode=place&q=${encodeURIComponent('place_id:'+placeId)}`);
+                const target = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${encodeURIComponent(placeId)}&fields=address_component,geometry,formatted_address`;
+                const res = await fetch(`${MAPS_PROXY_BASE}?target=${encodeURIComponent(target)}`);
                 if (res.ok) {
                     const data = await res.json();
                     const place = data && (data.result || data);
@@ -538,7 +540,8 @@
         async function geocodeAddress(address){
             showLoading();
             try {
-                const res = await fetch(`${MAPS_PROXY_BASE}?mode=geocode&q=${encodeURIComponent(address + ', Calgary, AB')}`);
+                const target = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address + ', Calgary, AB')}`;
+                const res = await fetch(`${MAPS_PROXY_BASE}?target=${encodeURIComponent(target)}`);
                 if (!res.ok) { showAlert('Address not found. Please try a different address.','error'); hideLoading(); return; }
                 const data = await res.json();
                 const results = data && data.results;
@@ -558,7 +561,8 @@
         }
         async function reverseGeocode(latLng,source){
             try {
-                const res = await fetch(`${MAPS_PROXY_BASE}?mode=reverse&q=${encodeURIComponent(latLng.lat+','+latLng.lng)}`);
+                const target = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${encodeURIComponent(latLng.lat+','+latLng.lng)}`;
+                const res = await fetch(`${MAPS_PROXY_BASE}?target=${encodeURIComponent(target)}`);
                 if (!res.ok) { showAlert('Reverse geocoding failed','error'); hideLoading(); return; }
                 const data = await res.json();
                 const results = data && data.results;
