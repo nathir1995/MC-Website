@@ -387,9 +387,20 @@
         function reverseGeocode(latLng,source){
             geocoder.geocode({ location: latLng }, (results,status)=>{
                 if(status==='OK' && results && results.length){
-                    for(let i=0;i<results.length;i++){
-                        const community=getCommunityFromComponents(results[i].address_components||[]);
-                        if(community){ lookupByCommunity(community,{source}); return; }
+                    // Prefer results explicitly tagged as neighborhood first, then sublocality
+                    const byPreference = [
+                        r => Array.isArray(r.types) && r.types.includes('neighborhood'),
+                        r => Array.isArray(r.types) && r.types.includes('sublocality'),
+                        r => Array.isArray(r.types) && r.types.includes('sublocality_level_1'),
+                        () => true
+                    ];
+                    for (const predicate of byPreference) {
+                        for (let i=0;i<results.length;i++){
+                            const r = results[i];
+                            if (!predicate(r)) continue;
+                            const community=getCommunityFromComponents(r.address_components||[]);
+                            if(community){ lookupByCommunity(community,{source}); return; }
+                        }
                     }
                     showAlert('Could not determine community from reverse geocoding','error'); hideLoading();
                 } else { showAlert('Reverse geocoding failed','error'); hideLoading(); }
@@ -404,7 +415,11 @@
                 if(types.includes('sublocality_level_1')) sublocalityLevel1=component.long_name;
                 if(types.includes('colloquial_area')) colloquial=component.long_name;
             });
-            return neighborhood||sublocalityLevel1||sublocality||colloquial||null;
+            const candidate = neighborhood||sublocalityLevel1||sublocality||colloquial||null;
+            if (!candidate) return null;
+            const generic = /^(NORTH\s*EAST|NORTH\s*WEST|SOUTH\s*EAST|SOUTH\s*WEST)\s+CALGARY$/i;
+            if (/^CALGARY$/i.test(candidate) || generic.test(candidate)) return null;
+            return candidate;
         }
         function lookupByCommunity(community,meta={}){
             const key=normalizeKey(community);
