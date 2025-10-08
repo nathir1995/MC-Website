@@ -41,10 +41,7 @@
         .section-icon { width: 40px; height: 40px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; }
         .mayor-icon { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
         .councillor-icon { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
-        .candidate-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
-        .sort-bar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 12px 0 16px; }
-        .chip-toggle { display: inline-flex; align-items: center; gap: 6px; background: #f9fafb; color: #374151; border: 1px solid #e5e7eb; padding: 6px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; cursor: pointer; }
-        .chip-toggle input { accent-color: #3b82f6; }
+        .candidate-list { display: flex; flex-direction: column; gap: 15px; }
         .candidate-card { background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); padding: 20px 25px; border-radius: 16px; display: flex; align-items: center; gap: 20px; transition: all 0.3s ease; animation: slideInRight 0.5s ease; border: 2px solid transparent; }
         .candidate-card:hover { transform: translateX(8px); border-color: #667eea; box-shadow: 0 8px 20px rgba(0,0,0,0.1); }
         .rank-badge { width: 50px; height: 50px; border-radius: 50%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; font-weight: 900; flex-shrink: 0; box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4); }
