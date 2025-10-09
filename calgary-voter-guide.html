@@ -109,7 +109,10 @@
         let wardIndex = { community: {}, postal: {}, fsa: {} };
         let wardCommunities = {}; // ward -> [communities]
         let addressIndex = {}; // normalizedAddress -> community
-        // Using proxy endpoints; no client Google JS objects needed
+        // Google Maps JS services (primary) and proxy (fallback)
+        let autocompleteService = null;
+        let placesService = null;
+        let geocoder = null;
 
         const SUPABASE_JSON_URL = 'https://ajgqyygtstihrwjovhes.supabase.co/storage/v1/object/public/YYC%20addresses/filtered_property_data.json';
 
