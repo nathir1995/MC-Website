@@ -239,16 +239,8 @@
             return items;
         }
 
+        let GOOGLE_MAPS_API_KEY = 'AIzaSyDrt3pufqoeYZlipaTBmYPvpBMSRwwdg9s';
         async function initGoogleMaps() {
-            try {
-                if (!GOOGLE_MAPS_API_KEY) {
-                    const res = await fetch(SUPABASE_CONFIG_URL, { cache: 'no-store' });
-                    if (res.ok) {
-                        const cfg = await res.json();
-                        GOOGLE_MAPS_API_KEY = (cfg.googleMapsApiKey || cfg.GOOGLE_MAPS_API_KEY || '').trim();
-                    }
-                }
-            } catch {}
             const script = document.createElement('script');
             script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(GOOGLE_MAPS_API_KEY)}&libraries=places&callback=initServices`;
             script.async = true;
