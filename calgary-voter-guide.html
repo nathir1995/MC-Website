@@ -106,6 +106,7 @@
     <script>
         const MAPS_PROXY_BASE = 'https://ajgqyygtstihrwjovhes.supabase.co/functions/v1/google-maps-proxy';
         const gmapsSessionToken = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : String(Date.now() + Math.random());
+        const SUPABASE_CONFIG_URL = 'https://ajgqyygtstihrwjovhes.supabase.co/storage/v1/object/public/YYC%20addresses/maps_config.json';
         let wardIndex = { community: {}, postal: {}, fsa: {} };
         let wardCommunities = {}; // ward -> [communities]
         let addressIndex = {}; // normalizedAddress -> community
@@ -244,6 +245,14 @@
 
         let GOOGLE_MAPS_API_KEY = 'AIzaSyDrt3pufqoeYZlipaTBmYPvpBMSRwwdg9s';
         async function initGoogleMaps() {
+            try {
+                const res = await fetch(SUPABASE_CONFIG_URL, { cache: 'no-store' });
+                if (res.ok) {
+                    const cfg = await res.json();
+                    const k = (cfg.googleMapsApiKey || cfg.GOOGLE_MAPS_API_KEY || '').trim();
+                    if (k) GOOGLE_MAPS_API_KEY = k;
+                }
+            } catch {}
             const script = document.createElement('script');
             script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(GOOGLE_MAPS_API_KEY)}&libraries=places&callback=initServices`;
             script.async = true;
