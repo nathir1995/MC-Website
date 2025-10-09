@@ -474,16 +474,15 @@
                 document.getElementById('alertContainer').innerHTML = '';
             }
             if(!value || value.length<3){ dropdown.classList.remove('active'); dropdown.innerHTML=''; return; }
-            debounceTimer = setTimeout(async ()=>{
+            debounceTimer = setTimeout(()=>{
                 try {
-                    const target = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(value)}&components=country:ca&sessiontoken=${encodeURIComponent(gmapsSessionToken)}`;
-                    const res = await fetch(`${MAPS_PROXY_BASE}?target=${encodeURIComponent(target)}`, { headers: PROXY_HEADERS, cache: 'no-store' });
-                    if (!res.ok) { dropdown.classList.remove('active'); dropdown.innerHTML=''; return; }
-                    const data = await res.json();
-                    let preds = Array.isArray(data.predictions) ? data.predictions : [];
-                    // Prefer Calgary suggestions
-                    preds = preds.filter(p => /calgary/i.test(p.description||''));
-                    displaySuggestions(preds);
+                    if (!(window.google && google.maps && google.maps.places)) { dropdown.classList.remove('active'); dropdown.innerHTML=''; return; }
+                    if (!autocompleteService) autocompleteService = new google.maps.places.AutocompleteService();
+                    const req = { input: value, componentRestrictions: { country: 'ca' }, types: ['geocode'] };
+                    autocompleteService.getPlacePredictions(req, (preds, status)=>{
+                        const ok = (google.maps.places.PlacesServiceStatus||{}).OK;
+                        displaySuggestions(status===ok ? preds : []);
+                    });
                 } catch { dropdown.classList.remove('active'); dropdown.innerHTML=''; }
             },300);
         });
