@@ -74,20 +74,52 @@ export default function CalgaryVoterGuide() {
 
   async function loadWardCommunities() {
     try {
+      // Prefer ward-specific files (ward-1.json ... ward-14.json)
+      const wardNumbers = Array.from({ length: 14 }, (_, i) => i + 1);
+      const lists = await Promise.all(
+        wardNumbers.map(async (n) => {
+          try {
+            const r = await fetch(`/assets/data/calgary/wards/ward-${n}.json`);
+            if (!r.ok) return null;
+            return await r.json();
+          } catch {
+            return null;
+          }
+        })
+      );
+
+      const newIndexFromFiles: WardData = { community: {}, postal: {}, fsa: {} };
+      let totalFromFiles = 0;
+      lists.forEach((arr, idx) => {
+        if (Array.isArray(arr)) {
+          const wardStr = String(wardNumbers[idx]);
+          arr.forEach((comm: string) => {
+            newIndexFromFiles.community[normalizeKey(comm)] = wardStr;
+            totalFromFiles += 1;
+          });
+        }
+      });
+
+      if (totalFromFiles > 0) {
+        setWardIndex(newIndexFromFiles);
+        // eslint-disable-next-line no-console
+        console.log('Ward mapping loaded from ward files:', totalFromFiles, 'communities');
+        return;
+      }
+
+      // Fallback: aggregated mapping file
       const res = await fetch('/assets/data/calgary/ward-communities.json');
       if (res.ok) {
         const data = await res.json();
-        const newIndex: WardData = { community: {}, postal: {}, fsa: {} };
-        
+        const fallbackIndex: WardData = { community: {}, postal: {}, fsa: {} };
         Object.entries<any>(data).forEach(([ward, communities]) => {
           (communities || []).forEach((comm: string) => {
-            newIndex.community[normalizeKey(comm)] = String(ward);
+            fallbackIndex.community[normalizeKey(comm)] = String(ward);
           });
         });
-        
-        setWardIndex(newIndex);
+        setWardIndex(fallbackIndex);
         // eslint-disable-next-line no-console
-        console.log('Ward mapping loaded:', Object.keys(newIndex.community).length, 'communities');
+        console.log('Ward mapping loaded from aggregated file:', Object.keys(fallbackIndex.community).length);
       }
     } catch (e) {
       // eslint-disable-next-line no-console
@@ -173,6 +205,13 @@ export default function CalgaryVoterGuide() {
   function selectSuggestion(prediction: any) {
     setAddress(prediction.description);
     setShowDropdown(false);
+    // Prefer dataset mapping when available
+    const addrNorm = normalizeAddress(prediction.description || '');
+    const communityFromDataset = addressCommunityIndex[addrNorm];
+    if (communityFromDataset) {
+      lookupByCommunity(communityFromDataset);
+      return;
+    }
     geocodeAddress(prediction.description);
   }
 
