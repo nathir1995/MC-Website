@@ -27,6 +27,8 @@ export default function CalgaryVoterGuide() {
   
   const [wardIndex, setWardIndex] = useState<WardData>({ community: {}, postal: {}, fsa: {} });
   const [candidates, setCandidates] = useState<Candidate[]>([]);
+  const [wardCsvInfo, setWardCsvInfo] = useState<{ filename: string; rows: number } | null>(null);
+  const [candidateCsvInfo, setCandidateCsvInfo] = useState<{ filename: string; rows: number } | null>(null);
   
   const debounceTimer = useRef<NodeJS.Timeout>();
 
@@ -36,6 +38,93 @@ export default function CalgaryVoterGuide() {
     loadCandidates();
     setMapsReady(true); // Ready to use proxy
   }, []);
+
+  async function handleWardCsvUpload(file: File) {
+    try {
+      const text = await file.text();
+      const rows = parseCsv(text);
+      if (rows.length === 0) {
+        showAlert('Ward CSV appears empty', 'error');
+        return;
+      }
+
+      const { wardKey, communityKey } = detectWardCsvColumns(rows[0]);
+      if (!wardKey || !communityKey) {
+        showAlert('Ward CSV must include columns for ward and community', 'error');
+        return;
+      }
+
+      const newIndex: WardData = { community: {}, postal: {}, fsa: {} };
+      let imported = 0;
+      for (const row of rows) {
+        const wardRaw = String(row[wardKey] ?? '').trim();
+        const communityRaw = String(row[communityKey] ?? '').trim();
+        if (!wardRaw || !communityRaw) continue;
+
+        const wardNormalized = normalizeWard(wardRaw);
+        const communityKeyNorm = normalizeKey(communityRaw);
+        if (wardNormalized && communityKeyNorm) {
+          newIndex.community[communityKeyNorm] = wardNormalized;
+          imported += 1;
+        }
+      }
+
+      if (imported === 0) {
+        showAlert('No valid ward/community rows found in CSV', 'error');
+        return;
+      }
+
+      setWardIndex(newIndex);
+      setWardCsvInfo({ filename: file.name, rows: imported });
+      showAlert(`Loaded ${imported} communities from ${file.name}`, 'success');
+    } catch (e: any) {
+      showAlert(`Failed to parse ward CSV: ${e?.message || 'Unknown error'}`, 'error');
+    }
+  }
+
+  async function handleCandidateCsvUpload(file: File) {
+    try {
+      const text = await file.text();
+      const rows = parseCsv(text);
+      if (rows.length === 0) {
+        showAlert('Candidate CSV appears empty', 'error');
+        return;
+      }
+
+      const { nameKey, positionKey, wardKey, urlKey } = detectCandidateCsvColumns(rows[0]);
+      if (!nameKey || !positionKey) {
+        showAlert('Candidate CSV must include name and position columns', 'error');
+        return;
+      }
+
+      const parsed: Candidate[] = [];
+      for (const row of rows) {
+        const name = String(row[nameKey] ?? '').trim();
+        const position = String(row[positionKey] ?? '').trim();
+        if (!name || !position) continue;
+
+        const wardVal = wardKey ? String(row[wardKey] ?? '').trim() : '';
+        const urlVal = urlKey ? String(row[urlKey] ?? '').trim() : '';
+        parsed.push({
+          name,
+          position: normalizePosition(position),
+          ward: wardVal ? normalizeWard(wardVal) : undefined,
+          url: urlVal || undefined,
+        });
+      }
+
+      if (parsed.length === 0) {
+        showAlert('No valid candidate rows found in CSV', 'error');
+        return;
+      }
+
+      setCandidates(parsed);
+      setCandidateCsvInfo({ filename: file.name, rows: parsed.length });
+      showAlert(`Loaded ${parsed.length} candidates from ${file.name}`, 'success');
+    } catch (e: any) {
+      showAlert(`Failed to parse candidate CSV: ${e?.message || 'Unknown error'}`, 'error');
+    }
+  }
 
   async function loadWardCommunities() {
     try {
@@ -254,6 +343,109 @@ export default function CalgaryVoterGuide() {
       .replace(/\bS\s*W\b/g, 'SW');
   }
 
+  function normalizeWard(value: string) {
+    const digits = (value.match(/\d+/)?.[0] || '').trim();
+    return digits || '';
+  }
+
+  function normalizePosition(value: string) {
+    const v = value.trim().toLowerCase();
+    if (/mayor/.test(v)) return 'Mayor';
+    if (/coun(c|s)il/.test(v)) return 'Councillor';
+    if (/trustee|school/.test(v)) return 'Trustee';
+    return value;
+  }
+
+  function detectWardCsvColumns(sample: Record<string, any>) {
+    const keys = Object.keys(sample);
+    let wardKey: string | null = null;
+    let communityKey: string | null = null;
+    for (const key of keys) {
+      const k = key.trim().toLowerCase();
+      if (!wardKey && (/^ward($|\b)/.test(k) || /ward_?number/.test(k) || /ward_?no/.test(k))) {
+        wardKey = key;
+      }
+      if (!communityKey && (/community/.test(k) || /neighbo(u)?rhood/.test(k))) {
+        communityKey = key;
+      }
+    }
+    // Heuristic: if headers not present, infer by data types (digits vs text)
+    if (!wardKey || !communityKey) {
+      for (const key of keys) {
+        const val = String(sample[key] ?? '');
+        if (!wardKey && /\d/.test(val)) wardKey = key;
+        else if (!communityKey && /[A-Za-z]/.test(val)) communityKey = key;
+      }
+    }
+    return { wardKey, communityKey };
+  }
+
+  function detectCandidateCsvColumns(sample: Record<string, any>) {
+    const keys = Object.keys(sample);
+    let nameKey: string | null = null;
+    let positionKey: string | null = null;
+    let wardKey: string | null = null;
+    let urlKey: string | null = null;
+    for (const key of keys) {
+      const k = key.trim().toLowerCase();
+      if (!nameKey && (/^name$/.test(k) || /candidate/.test(k))) nameKey = key;
+      if (!positionKey && (/position/.test(k) || /office/.test(k) || /role/.test(k))) positionKey = key;
+      if (!wardKey && (/^ward($|\b)/.test(k) || /ward_?number/.test(k))) wardKey = key;
+      if (!urlKey && (/url/.test(k) || /link/.test(k) || /website/.test(k))) urlKey = key;
+    }
+    return { nameKey, positionKey, wardKey, urlKey };
+  }
+
+  function parseCsv(text: string): Array<Record<string, string>> {
+    const lines = text.replace(/\r\n?/g, '\n').split('\n').filter(l => l.trim().length > 0);
+    if (lines.length === 0) return [];
+
+    const header = splitCsvLine(lines[0]);
+    const rows: Array<Record<string, string>> = [];
+    for (let i = 1; i < lines.length; i++) {
+      const values = splitCsvLine(lines[i]);
+      const row: Record<string, string> = {};
+      for (let j = 0; j < header.length; j++) {
+        const key = header[j] ?? `col_${j + 1}`;
+        row[key] = (values[j] ?? '').trim();
+      }
+      rows.push(row);
+    }
+    return rows;
+  }
+
+  function splitCsvLine(line: string): string[] {
+    const values: string[] = [];
+    let current = '';
+    let inQuotes = false;
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (inQuotes) {
+        if (ch === '"') {
+          if (line[i + 1] === '"') {
+            current += '"';
+            i += 1; // skip escaped quote
+          } else {
+            inQuotes = false;
+          }
+        } else {
+          current += ch;
+        }
+      } else {
+        if (ch === ',') {
+          values.push(current);
+          current = '';
+        } else if (ch === '"') {
+          inQuotes = true;
+        } else {
+          current += ch;
+        }
+      }
+    }
+    values.push(current);
+    return values.map(v => v.trim());
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-500 to-purple-600 p-8">
       <div className="max-w-4xl mx-auto">
@@ -263,6 +455,42 @@ export default function CalgaryVoterGuide() {
         </div>
 
         <div className="bg-white rounded-3xl shadow-2xl p-10">
+          <div className="mb-6">
+            <h3 className="text-lg font-semibold mb-2">Upload Data (CSV)</h3>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="border-2 border-dashed border-gray-300 rounded-xl p-4">
+                <label className="block font-medium text-gray-700 mb-2">Ward Mapping CSV</label>
+                <input
+                  type="file"
+                  accept=".csv,text/csv"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handleWardCsvUpload(file);
+                  }}
+                  className="block w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                />
+                {wardCsvInfo && (
+                  <p className="mt-2 text-sm text-gray-600">Loaded {wardCsvInfo.rows} rows from {wardCsvInfo.filename}</p>
+                )}
+              </div>
+              <div className="border-2 border-dashed border-gray-300 rounded-xl p-4">
+                <label className="block font-medium text-gray-700 mb-2">Candidate CSV</label>
+                <input
+                  type="file"
+                  accept=".csv,text/csv"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handleCandidateCsvUpload(file);
+                  }}
+                  className="block w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100"
+                />
+                {candidateCsvInfo && (
+                  <p className="mt-2 text-sm text-gray-600">Loaded {candidateCsvInfo.rows} rows from {candidateCsvInfo.filename}</p>
+                )}
+              </div>
+            </div>
+            <p className="mt-2 text-xs text-gray-500">Ward CSV headers: ward, community. Candidate CSV headers: name, position, ward (optional), url (optional). Flexible header names supported.</p>
+          </div>
           <div className="bg-gray-50 border-2 border-dashed border-gray-300 rounded-2xl p-4 mb-6">
             <div className={`inline-block px-3 py-1 rounded-lg text-sm font-semibold mb-2 ${
               mapsReady ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
