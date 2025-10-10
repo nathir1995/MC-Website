@@ -431,16 +431,10 @@
 
         <div class="main-card">
             <div class="data-status">
-                <h3>📁 Data Files</h3>
                 <div>
                     <label for="wardFile" class="upload-btn">Upload Ward Mapping CSV</label>
                     <input type="file" id="wardFile" class="file-input" accept=".csv">
                     <span id="wardFileName" class="file-name"></span>
-                </div>
-                <div>
-                    <label for="candidateFile" class="upload-btn">Upload Candidate CSV</label>
-                    <input type="file" id="candidateFile" class="file-input" accept=".csv">
-                    <span id="candidateFileName" class="file-name"></span>
                 </div>
             </div>
 
@@ -537,39 +531,7 @@
             }
         });
 
-        const candidateFileInput = document.getElementById('candidateFile');
-        const candidateFileNameSpan = document.getElementById('candidateFileName');
-        candidateFileInput.addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            if (file) {
-                candidateFileNameSpan.textContent = file.name;
-                Papa.parse(file, {
-                    header: true,
-                    skipEmptyLines: true,
-                    complete: function(results) {
-                        candidateData = { mayors: [], councillors: {} };
-                        results.data.forEach(row => {
-                            if (row.Type && row.Name && row.Rank) {
-                                const candidate = { name: row.Name.trim(), rank: parseInt(row.Rank, 10) };
-                                const type = row.Type.toString().toLowerCase();
-                                if (type === 'mayor') {
-                                    candidateData.mayors.push(candidate);
-                                } else if (type === 'councillor' && row.Ward) {
-                                    const ward = row.Ward.toString().trim();
-                                    if (!candidateData.councillors[ward]) candidateData.councillors[ward] = [];
-                                    candidateData.councillors[ward].push(candidate);
-                                }
-                            }
-                        });
-                        candidateData.mayors.sort((a, b) => a.rank - b.rank);
-                        Object.keys(candidateData.councillors).forEach(ward => {
-                            candidateData.councillors[ward].sort((a, b) => a.rank - b.rank);
-                        });
-                        showAlert('Candidate data loaded successfully!', 'success');
-                    }
-                });
-            }
-        });
+        // Candidate CSV upload removed from UI; associated handlers removed
 
         const addressInput = document.getElementById('addressInput');
         const dropdown = document.getElementById('autocompleteDropdown');
