@@ -86,6 +86,8 @@
         let trackerCandidates = null;
         let autocompleteService = null;
         let geocoder = null;
+        // Prevent recursive/infinite geocoding flows
+        let isCurrentlyGeocoding = false;
         const addressInput = document.getElementById('addressInput');
         const dropdown = document.getElementById('autocompleteDropdown');
         let debounceTimer;
@@ -275,6 +277,12 @@
         }
 
         function geocodeAddress(address) {
+            // Prevent recursive calls
+            if (isCurrentlyGeocoding) {
+                console.log('Already geocoding, skipping recursive call');
+                return;
+            }
+            isCurrentlyGeocoding = true;
             showLoading();
             const geocodePromise = new Promise((resolve, reject) => {
                 geocoder.geocode({ address: address + ', Calgary, AB', region: 'ca' }, (results, status) => {
@@ -284,22 +292,22 @@
             });
             withTimeout(geocodePromise, 8000)
                 .then((results) => {
-                    if (!results || !results.length) { showAlert('Address not found', 'error'); hideLoading(); return; }
+                    if (!results || !results.length) { showAlert('Address not found', 'error'); hideLoading(); isCurrentlyGeocoding = false; return; }
                     const best = results[0];
                     console.log('Geocode result:', best);
                     if (addressIndexLoaded && best.formatted_address) {
                         const normalized = normalizeAddress(best.formatted_address);
                         console.log('Trying dataset lookup:', normalized);
                         const fromDataset = addressIndex[normalized];
-                        if (fromDataset) { console.log('Found in dataset:', fromDataset); lookupByCommunity(fromDataset, { source: 'Address dataset' }); return; }
+                        if (fromDataset) { console.log('Found in dataset:', fromDataset); isCurrentlyGeocoding = false; lookupByCommunity(fromDataset, { source: 'Address dataset' }); return; }
                     }
                     const community = getCommunityFromComponents(best.address_components || []);
                     console.log('Extracted community:', community);
-                    if (community && !isGenericLocation(community)) { lookupByCommunity(community, { source: 'Google Geocoding' }); return; }
-                    if (best.geometry && best.geometry.location) { reverseGeocodeForCommunity(best.geometry.location); return; }
-                    showAlert('Could not determine community. Try a more complete street address.', 'error'); hideLoading();
+                    if (community && !isGenericLocation(community)) { isCurrentlyGeocoding = false; lookupByCommunity(community, { source: 'Google Geocoding' }); return; }
+                    if (best.geometry && best.geometry.location) { /* keep flag true; reverse will reset */ reverseGeocodeForCommunity(best.geometry.location); return; }
+                    showAlert('Could not determine community. Try a more complete street address.', 'error'); hideLoading(); isCurrentlyGeocoding = false;
                 })
-                .catch((error) => { console.error('Geocoding error:', error); showAlert('Failed to geocode address: ' + error.message, 'error'); hideLoading(); });
+                .catch((error) => { console.error('Geocoding error:', error); showAlert('Failed to geocode address: ' + error.message, 'error'); hideLoading(); isCurrentlyGeocoding = false; });
         }
 
         function getCommunityFromComponents(components) {
@@ -360,48 +368,51 @@
             });
             withTimeout(reversePromise, 8000)
                 .then((results) => {
-                    if (!results || !results.length) { showAlert('Could not determine community', 'error'); hideLoading(); return; }
+                    if (!results || !results.length) { showAlert('Could not determine community', 'error'); hideLoading(); isCurrentlyGeocoding = false; return; }
                     console.log('Reverse geocode results:', results);
                     for (let i = 0; i < Math.min(results.length, 5); i++) {
                         const result = results[i];
                         console.log(`Checking result ${i}:`, result);
                         if (addressIndexLoaded && result.formatted_address) {
                             const fromDataset = addressIndex[normalizeAddress(result.formatted_address)];
-                            if (fromDataset) { console.log('Found in dataset (reverse):', fromDataset); lookupByCommunity(fromDataset, { source: 'Address dataset (reverse)' }); return; }
+                            if (fromDataset) { console.log('Found in dataset (reverse):', fromDataset); isCurrentlyGeocoding = false; lookupByCommunity(fromDataset, { source: 'Address dataset (reverse)' }); return; }
                         }
                         const community = getCommunityFromComponents(result.address_components || []);
                         console.log(`Community from result ${i}:`, community);
                         if (community && !isGenericLocation(community)) {
                             const key = normalizeKey(community);
-                            if (wardIndex.community[key]) { console.log('Found valid community:', community); lookupByCommunity(community, { source: 'Reverse geocoding' }); return; }
+                            if (wardIndex.community[key]) { console.log('Found valid community:', community); isCurrentlyGeocoding = false; lookupByCommunity(community, { source: 'Reverse geocoding' }); return; }
                         }
                     }
-                    showAlert('Could not find a specific community for this address. Please enter your full street address with house number.', 'error'); hideLoading();
+                    showAlert('Could not find a specific community for this address. Please enter your full street address with house number.', 'error'); hideLoading(); isCurrentlyGeocoding = false;
                 })
-                .catch((error) => { console.error('Reverse geocoding error:', error); showAlert('Failed to reverse geocode: ' + error.message, 'error'); hideLoading(); });
+                .catch((error) => { console.error('Reverse geocoding error:', error); showAlert('Failed to reverse geocode: ' + error.message, 'error'); hideLoading(); isCurrentlyGeocoding = false; });
         }
 
         function lookupByCommunityWithFallback(community, originalAddress, options = {}) {
+            console.log('lookupByCommunityWithFallback called:', community, options);
             const key = normalizeKey(community);
             const ward = wardIndex.community[key];
             if (ward) {
+                console.log('Ward found:', ward);
                 displayResults(ward, { ...options, community });
                 return;
             }
+            console.log('Ward not found, trying fuzzy match');
             const partialMatch = findPartialCommunityMatch(key);
             if (partialMatch) {
+                console.log('Fuzzy match found:', partialMatch);
                 displayResults(partialMatch.ward, { ...options, community: partialMatch.name, note: 'Matched using similar community name' });
                 return;
             }
-            if (originalAddress && geocoder) {
-                geocodeAddress(originalAddress);
-                return;
-            }
+            // Do NOT recursively call geocodeAddress here; avoid infinite loops.
+            console.log('No match found for community:', community);
             showAlert(`Community "${community}" not found in ward mapping. Please try entering your full street address with house number.`, 'error');
             hideLoading();
         }
 
         function lookupByCommunity(community, options = {}) {
+            console.log('lookupByCommunity called:', community, options);
             lookupByCommunityWithFallback(community, addressInput.value.trim(), options);
         }
 
