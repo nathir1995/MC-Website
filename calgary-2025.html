@@ -245,6 +245,8 @@
         <button class="filter-btn ccsd" onclick="setFilter('ccsd')">CCSD (<span id="countCCSD">0</span>)</button>
       </div>
 
+      <div id="rankings" class="polls-section" style="display:none;"></div>
+
       <div class="polls-section">
         <div class="poll-header">
           <div>
@@ -749,6 +751,49 @@
     let currentSearch = '';
     let currentWard = '';
 
+    // Manual rankings provided by user
+    const manualRankings = [
+      { name: 'Jyoti Gondek', position: 'Mayor', rank: 1 },
+      { name: 'Sonya Sharp', position: 'Mayor', rank: 2 },
+      { name: 'Shaukat Chaudhry', position: 'Councillor', rank: 1 },
+      { name: 'Raj Dhaliwal', position: 'Councillor', rank: 1 },
+      { name: 'Tariq Khan', position: 'Councillor', rank: 2 },
+      { name: 'Inam Teja', position: 'Councillor', rank: 1 },
+      { name: 'Nathaniel Schmidt', position: 'Councillor', rank: 1 },
+      { name: 'Gar Gar', position: 'Councillor', rank: 1 },
+      { name: 'Mahmoud Mourra', position: 'Councillor', rank: 1 },
+      { name: 'Jon Nishimura', position: 'CBE Trustee', rank: 1 },
+    ];
+
+    function renderRankings() {
+      const container = document.getElementById('rankings');
+      if (!container) return;
+
+      const byPos = (pos) => manualRankings
+        .filter(r => r.position === pos)
+        .sort((a, b) => a.rank - b.rank)
+        .map(r => {
+          const found = candidates.find(c => c.name === r.name && (pos === 'Mayor' ? c.position === 'Mayor' : true));
+          const wardInfo = found && found.ward ? ` (Ward ${found.ward})` : '';
+          const url = found && found.url ? found.url : '';
+          const nameHtml = url ? `<a href="${url}" target="_blank" rel="noopener">${r.name}</a>` : r.name;
+          return `<div style="display:flex;justify-content:space-between;gap:12px;padding:6px 0;">
+                    <span>${r.rank}.</span>
+                    <span style="flex:1;">${nameHtml}${wardInfo}</span>
+                  </div>`;
+        }).join('');
+
+      const mayorCol = `<div class="poll-card"><h5>Mayor Rankings</h5>${byPos('Mayor') || '<div>No entries</div>'}</div>`;
+      const councillorCol = `<div class="poll-card"><h5>Councillor Rankings</h5>${byPos('Councillor') || '<div>No entries</div>'}</div>`;
+      const trusteeCol = `<div class="poll-card"><h5>School Trustees Rankings</h5>${byPos('CBE Trustee') || '<div>No entries</div>'}</div>`;
+
+      container.innerHTML = `
+        <div class="poll-header"><div><div class="poll-title">Rankings</div><div class="poll-meta">Curated rankings by category</div></div></div>
+        <div class="poll-grid">${mayorCol}${councillorCol}${trusteeCol}</div>
+      `;
+      container.style.display = '';
+    }
+
     function isAcclamationPlaceholder(c) {
       const name = (c.name||'').trim().toLowerCase();
       return name === 'elected by acclamation' || name === 'acclamation';
@@ -931,6 +976,8 @@
       setTimeout(initPollCharts, 0);
       updateCounts();
       renderCandidates();
+      // Render manual rankings section
+      try { renderRankings(); } catch (e) { /* ignore */ }
     });
   </script>
   <!-- Google Translate (hidden) to translate candidate content and UI -->
