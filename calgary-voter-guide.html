@@ -25,6 +25,8 @@
         .autocomplete-dropdown.active { display: block; }
         .autocomplete-item { padding: 15px 20px; cursor: pointer; border-bottom: 1px solid #f0f0f0; transition: background 0.2s; }
         .autocomplete-item:hover { background: #f8f9fa; }
+        .autocomplete-item .main-text { font-weight: 600; color: #333; }
+        .autocomplete-item .sub-text { font-size: 0.9rem; color: #666; margin-top: 2px; }
         .search-btn { width: 100%; padding: 18px; font-size: 1.2rem; font-weight: 700; color: white; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none; border-radius: 16px; cursor: pointer; transition: all 0.3s ease; box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4); }
         .search-btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6); }
         .search-btn:disabled { opacity: 0.6; cursor: not-allowed; }
@@ -73,7 +75,7 @@
 
         <div class="main-card">
             <div class="info-note">
-                <div id="statusBadge" class="status-badge status-loading">⏳ Initializing...</div>
+                <div id="statusBadge" class="status-badge status-loading">⏳ Loading address database...</div>
                 <div>Enter your address to find your Calgary ward.</div>
             </div>
 
@@ -95,11 +97,12 @@
     </div>
 
     <script>
-        // Supabase configuration - NO AUTH, using anon key directly
-        const SUPABASE_URL = 'https://ajgqyygtstihrwjovhes.supabase.co';
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFqZ3F5eWd0c3RpaHJ3am92aGVzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzM2MTk1NTUsImV4cCI6MjA0OTE5NTU1NX0.kxJPe63Wej0eqOZfB4x8bOGRPB2xWJ3_t7lRJJa9Ink';
+        // Supabase Storage URL for address data
+        const SUPABASE_DATA_URL = 'https://ajgqyygtstihrwjovhes.supabase.co/storage/v1/object/public/YYC%20addresses/filtered_property_data.json';
 
         // State
+        let addressData = [];
+        let addressIndex = new Map(); // For fast lookup
         let wardIndex = { community: {} };
         let trackerCandidates = null;
         let debounceTimer;
@@ -111,11 +114,8 @@
 
         // Initialize
         async function init() {
-            updateStatus('ready', '✅ Ready');
-            addressInput.disabled = false;
-            searchBtn.disabled = false;
-            
             await Promise.all([
+                loadAddressData(),
                 loadWardCommunities(),
                 loadTrackerCandidates()
             ]);
@@ -126,32 +126,100 @@
             statusBadge.textContent = text;
         }
 
-        // Call Supabase Edge Function proxy WITHOUT authentication
-        async function callGoogleMapsProxy(mode, query, country = 'ca') {
-            const url = new URL(`${SUPABASE_URL}/functions/v1/google-maps-proxy`);
-            url.searchParams.append('mode', mode);
-            url.searchParams.append('q', query);
-            url.searchParams.append('country', country);
-
-            const response = await fetch(url.toString(), {
-                method: 'GET',
-                headers: {
-                    'apikey': SUPABASE_ANON_KEY,
-                    'Accept': 'application/json'
+        // Load address data from Supabase Storage
+        async function loadAddressData() {
+            try {
+                updateStatus('loading', '⏳ Loading Calgary addresses...');
+                console.log('Fetching address data from Supabase...');
+                
+                const response = await fetch(SUPABASE_DATA_URL, {
+                    cache: 'force-cache'
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`Failed to load: ${response.status}`);
                 }
-            });
 
-            if (!response.ok) {
-                const text = await response.text();
-                console.error('API Error:', response.status, text);
-                throw new Error(`API call failed: ${response.status}`);
+                const rawText = await response.text();
+                
+                // Try parsing as regular JSON first
+                let data;
+                try {
+                    data = JSON.parse(rawText);
+                } catch {
+                    // If that fails, try NDJSON (one JSON object per line)
+                    data = rawText.split('\n')
+                        .filter(line => line.trim())
+                        .map(line => {
+                            try {
+                                return JSON.parse(line);
+                            } catch {
+                                return null;
+                            }
+                        })
+                        .filter(Boolean);
+                }
+
+                // Handle different data structures
+                addressData = Array.isArray(data) ? data : (data.records || []);
+                
+                console.log(`Loaded ${addressData.length} addresses`);
+                
+                // Build index for fast lookup
+                addressData.forEach(record => {
+                    const address = getField(record, ['address', 'Address', 'ADDRESS', 'full_address', 'FULL_ADDRESS', 'street_address']);
+                    const community = getField(record, ['community', 'Community', 'COMMUNITY', 'NEIGHBOURHOOD', 'Neighbourhood']);
+                    
+                    if (address && community) {
+                        const normalizedAddr = normalizeAddress(address);
+                        addressIndex.set(normalizedAddr, {
+                            address: address,
+                            community: community,
+                            original: record
+                        });
+                    }
+                });
+
+                console.log(`Indexed ${addressIndex.size} addresses`);
+                updateStatus('ready', '✅ Ready');
+                addressInput.disabled = false;
+                searchBtn.disabled = false;
+                
+            } catch (error) {
+                console.error('Failed to load address data:', error);
+                updateStatus('error', '❌ Failed to load address data');
+                showAlert('Failed to load address database. Some features may not work.', 'error');
             }
-
-            return await response.json();
         }
 
-        // Autocomplete
-        addressInput.addEventListener('input', async function(e) {
+        // Helper to get field with multiple possible names
+        function getField(obj, fieldNames) {
+            for (const name of fieldNames) {
+                if (obj[name]) return String(obj[name]).trim();
+            }
+            return '';
+        }
+
+        // Normalize address for matching
+        function normalizeAddress(addr) {
+            return addr.toUpperCase()
+                .replace(/CALGARY,?\s*AB/gi, '')
+                .replace(/,/g, ' ')
+                .replace(/\./g, '')
+                .replace(/\bSTREET\b/g, 'ST')
+                .replace(/\bAVENUE\b/g, 'AVE')
+                .replace(/\bROAD\b/g, 'RD')
+                .replace(/\bDRIVE\b/g, 'DR')
+                .replace(/\bNORTH EAST\b/g, 'NE')
+                .replace(/\bNORTH WEST\b/g, 'NW')
+                .replace(/\bSOUTH EAST\b/g, 'SE')
+                .replace(/\bSOUTH WEST\b/g, 'SW')
+                .replace(/\s+/g, ' ')
+                .trim();
+        }
+
+        // Address autocomplete (local search)
+        addressInput.addEventListener('input', function(e) {
             clearTimeout(debounceTimer);
             const value = e.target.value.trim();
             
@@ -161,33 +229,41 @@
                 return;
             }
 
-            debounceTimer = setTimeout(async () => {
-                try {
-                    const data = await callGoogleMapsProxy('autocomplete', value);
-                    displaySuggestions(data.predictions || []);
-                } catch (error) {
-                    console.error('Autocomplete error:', error);
-                    dropdown.classList.remove('active');
+            debounceTimer = setTimeout(() => {
+                const searchTerm = normalizeAddress(value);
+                const matches = [];
+                
+                // Search through indexed addresses
+                for (const [normalizedAddr, data] of addressIndex.entries()) {
+                    if (normalizedAddr.includes(searchTerm)) {
+                        matches.push(data);
+                        if (matches.length >= 10) break; // Limit to 10 results
+                    }
                 }
-            }, 300);
+
+                displaySuggestions(matches);
+            }, 200);
         });
 
-        function displaySuggestions(predictions) {
+        function displaySuggestions(matches) {
             dropdown.innerHTML = '';
             
-            if (!predictions || predictions.length === 0) {
+            if (!matches || matches.length === 0) {
                 dropdown.classList.remove('active');
                 return;
             }
 
-            predictions.forEach(prediction => {
+            matches.forEach(match => {
                 const item = document.createElement('div');
                 item.className = 'autocomplete-item';
-                item.textContent = prediction.description;
+                item.innerHTML = `
+                    <div class="main-text">${match.address}</div>
+                    <div class="sub-text">${match.community}</div>
+                `;
                 item.addEventListener('click', () => {
-                    addressInput.value = prediction.description;
+                    addressInput.value = match.address;
                     dropdown.classList.remove('active');
-                    geocodeAddress(prediction.description);
+                    lookupByCommunity(match.community, match.address);
                 });
                 dropdown.appendChild(item);
             });
@@ -196,7 +272,7 @@
         }
 
         // Search
-        async function searchWard() {
+        function searchWard() {
             const address = addressInput.value.trim();
             
             if (!address) {
@@ -204,86 +280,50 @@
                 return;
             }
 
-            if (Object.keys(wardIndex.community).length === 0) {
-                showAlert('Ward mapping not loaded yet', 'info');
-                return;
-            }
-
-            geocodeAddress(address + ', Calgary, AB');
-        }
-
-        async function geocodeAddress(address) {
-            showLoading();
+            // Try to find in address index
+            const normalized = normalizeAddress(address);
+            const match = addressIndex.get(normalized);
             
-            try {
-                const data = await callGoogleMapsProxy('geocode', address);
-                
-                if (data.results && data.results.length > 0) {
-                    const result = data.results[0];
-                    const community = getCommunityFromComponents(result.address_components || []);
-                    
-                    if (community) {
-                        lookupByCommunity(community);
-                    } else {
-                        showAlert('Could not determine community', 'error');
-                        hideLoading();
+            if (match) {
+                lookupByCommunity(match.community, match.address);
+            } else {
+                // Try fuzzy search
+                for (const [normalizedAddr, data] of addressIndex.entries()) {
+                    if (normalizedAddr.includes(normalized) || normalized.includes(normalizedAddr)) {
+                        lookupByCommunity(data.community, data.address);
+                        return;
                     }
-                } else {
-                    showAlert('Address not found', 'error');
-                    hideLoading();
                 }
-            } catch (error) {
-                console.error('Geocoding error:', error);
-                showAlert(error.message || 'Failed to geocode address', 'error');
-                hideLoading();
+                
+                showAlert('Address not found in database. Please select from suggestions.', 'error');
             }
         }
 
-        function getCommunityFromComponents(components) {
-            if (!components) return null;
-            
-            let neighborhood = null;
-            let sublocality = null;
-            
-            components.forEach(component => {
-                const types = component.types || [];
-                if (types.includes('neighborhood')) {
-                    neighborhood = component.long_name;
-                }
-                if (types.includes('sublocality') || types.includes('sublocality_level_1')) {
-                    sublocality = component.long_name;
-                }
-            });
-            
-            const candidate = neighborhood || sublocality;
-            
-            if (candidate && !/^(CALGARY|NORTH EAST|NORTH WEST|SOUTH EAST|SOUTH WEST)$/i.test(candidate)) {
-                return candidate;
-            }
-            
-            return null;
-        }
-
-        function lookupByCommunity(community) {
+        function lookupByCommunity(community, address = null) {
             const key = normalizeKey(community);
             const ward = wardIndex.community[key];
             
             if (ward) {
-                displayResults(ward, { source: 'Community match', community });
+                displayResults(ward, { 
+                    source: 'Address database match', 
+                    community: community,
+                    address: address 
+                });
             } else {
-                showAlert(`Community "${community}" not found`, 'error');
-                hideLoading();
+                showAlert(`Community "${community}" not found in ward mapping`, 'error');
             }
         }
 
         function displayResults(ward, options = {}) {
-            hideLoading();
             dropdown.classList.remove('active');
             
             const { mayors, councillors } = getCandidatesForWard(ward);
             
-            const sourceNote = options.source ? 
-                `<div class="alert alert-success"><span>✅</span><span>Matched by ${options.source}${options.community ? ` – Community: ${options.community}` : ''}</span></div>` : '';
+            let sourceText = options.source || 'Match found';
+            if (options.address) sourceText += ` – ${options.address}`;
+            if (options.community) sourceText += ` (${options.community})`;
+            
+            const sourceNote = `<div class="alert alert-success"><span>✅</span><span>${sourceText}</span></div>`;
             
             let html = `${sourceNote}<div class="ward-badge"><h2>Your Ward</h2><div class="ward-number">Ward ${ward}</div></div>`;
             
@@ -321,7 +361,7 @@
             return html;
         }
 
-        // Load data
+        // Load ward communities mapping
         async function loadWardCommunities() {
             try {
                 const res = await fetch('assets/data/calgary/ward-communities.json');
@@ -339,6 +379,7 @@
             }
         }
 
+        // Load candidates
         async function loadTrackerCandidates() {
             try {
                 const res = await fetch('calgary-2025.html');
@@ -371,15 +412,6 @@
             const icons = { error: '❌', success: '✅', info: 'ℹ️' };
             alertContainer.innerHTML = `<div class="alert alert-${type}"><span>${icons[type]}</span><span>${message}</span></div>`;
             setTimeout(() => { alertContainer.innerHTML = ''; }, 5000);
-        }
-
-        function showLoading() {
-            document.getElementById('resultsContainer').innerHTML = `<div class="loading"><div class="spinner"></div><p>Searching...</p></div>`;
-        }
-
-        function hideLoading() {
-            const loadingDiv = document.querySelector('.loading');
-            if (loadingDiv) loadingDiv.remove();
         }
 
         function normalizeKey(value) {
