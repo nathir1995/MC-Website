@@ -289,6 +289,8 @@
                 const alertEl = document.getElementById('alertContainer');
                 if (resultsEl) resultsEl.innerHTML = '';
                 if (alertEl) alertEl.innerHTML = '';
+                // Also reset any in-flight geocoding guard
+                isCurrentlyGeocoding = false;
                 return;
             }
             const completePostalPattern = /^[A-Za-z]\d[A-Za-z][\s-]?\d[A-Za-z]\d$/;
@@ -517,24 +519,70 @@
             withTimeout(reversePromise, 8000)
                 .then((results) => {
                     if (!results || !results.length) { showAlert('Could not determine community', 'error'); hideLoading(); isCurrentlyGeocoding = false; return; }
-                    console.log('Reverse geocode results:', results);
-                    for (let i = 0; i < Math.min(results.length, 5); i++) {
-                        const result = results[i];
-                        console.log(`Checking result ${i}:`, result);
-                        if (addressIndexLoaded && result.formatted_address) {
-                            const fromDataset = addressIndex[normalizeAddress(result.formatted_address)];
-                            if (fromDataset) { console.log('Found in dataset (reverse):', fromDataset); isCurrentlyGeocoding = false; lookupByCommunity(fromDataset, { source: 'Address dataset (reverse)' }); return; }
+                    console.log(`Reverse geocode returned ${results.length} results`);
+                    // Strategy 1: dataset check across many results
+                    if (addressIndexLoaded) {
+                        for (let i = 0; i < Math.min(results.length, 20); i++) {
+                            const result = results[i];
+                            if (result.formatted_address) {
+                                const fromDataset = lookupInDataset(result.formatted_address);
+                                if (fromDataset) { console.log(`Found in dataset at result ${i}:`, fromDataset); isCurrentlyGeocoding = false; lookupByCommunity(fromDataset, { source: 'Address dataset (reverse)' }); return; }
+                            }
                         }
+                    }
+                    // Strategy 2: strict extraction across many results, with fuzzy fallback
+                    for (let i = 0; i < Math.min(results.length, 20); i++) {
+                        const result = results[i];
+                        console.log(`Checking result ${i}:`, result.formatted_address);
                         const community = getCommunityFromComponents(result.address_components || []);
                         console.log(`Community from result ${i}:`, community);
                         if (community && !isGenericLocation(community)) {
                             const key = normalizeKey(community);
-                            if (wardIndex.community[key]) { console.log('Found valid community:', community); isCurrentlyGeocoding = false; lookupByCommunity(community, { source: 'Reverse geocoding' }); return; }
+                            const ward = wardIndex.community[key];
+                            if (ward) { console.log('Found valid community:', community, 'Ward:', ward); isCurrentlyGeocoding = false; lookupByCommunity(community, { source: 'Reverse geocoding' }); return; }
+                            // Try fuzzy
+                            const fuzzy = findPartialCommunityMatch(key);
+                            if (fuzzy) { console.log('Fuzzy match succeeded:', fuzzy); isCurrentlyGeocoding = false; displayResults(fuzzy.ward, { community: fuzzy.name, note: 'Approximate match', source: 'Reverse geocoding (fuzzy)' }); return; }
                         }
                     }
-                    showAlert('Could not find a specific community for this address. Please enter your full street address with house number.', 'error'); hideLoading(); isCurrentlyGeocoding = false;
+                    // Strategy 3: lenient extraction (accept more component types), then fuzzy
+                    console.log('Standard extraction failed, trying lenient extraction...');
+                    for (let i = 0; i < Math.min(results.length, 20); i++) {
+                        const result = results[i];
+                        const lenientCommunity = getLenientCommunityFromComponents(result.address_components || []);
+                        if (lenientCommunity && !isGenericLocation(lenientCommunity)) {
+                            const key = normalizeKey(lenientCommunity);
+                            const ward = wardIndex.community[key];
+                            if (ward) { console.log('Found with lenient extraction:', lenientCommunity); isCurrentlyGeocoding = false; lookupByCommunity(lenientCommunity, { source: 'Reverse geocoding (lenient)' }); return; }
+                            const fuzzy = findPartialCommunityMatch(key);
+                            if (fuzzy) { console.log('Lenient + fuzzy match:', fuzzy); isCurrentlyGeocoding = false; displayResults(fuzzy.ward, { community: fuzzy.name, note: 'Approximate match', source: 'Reverse geocoding (lenient fuzzy)' }); return; }
+                        }
+                    }
+                    console.log('All reverse geocoding strategies failed');
+                    showAlert('Could not find a specific community for this address. Please try a nearby address or contact support.', 'error'); hideLoading(); isCurrentlyGeocoding = false;
                 })
                 .catch((error) => { console.error('Reverse geocoding error:', error); showAlert('Failed to reverse geocode: ' + error.message, 'error'); hideLoading(); isCurrentlyGeocoding = false; });
+        }
+
+        function getLenientCommunityFromComponents(components) {
+            if (!components) return null;
+            console.log('Lenient extraction - all components:', (components || []).map(c => ({ name: c.long_name, types: c.types })));
+            const candidates = [];
+            components.forEach(component => {
+                const types = component.types || [];
+                const name = component.long_name;
+                const isCountryOrProvince = types.some(t => t === 'country' || t === 'administrative_area_level_1' || t === 'postal_code');
+                if (isCountryOrProvince) return;
+                if (types.includes('neighborhood') || types.includes('sublocality') || types.includes('sublocality_level_1') || types.includes('colloquial_area') || types.includes('political')) {
+                    candidates.push({ name, priority: types.includes('neighborhood') ? 1 : types.includes('sublocality_level_1') ? 2 : types.includes('sublocality') ? 3 : types.includes('colloquial_area') ? 4 : 5 });
+                }
+            });
+            candidates.sort((a, b) => a.priority - b.priority);
+            console.log('Lenient candidates:', candidates);
+            for (const c of candidates) {
+                if (!isGenericLocation(c.name)) { console.log('Lenient extraction selected:', c.name); return c.name; }
+            }
+            return null;
         }
 
         function lookupByCommunityWithFallback(community, originalAddress, options = {}) {
