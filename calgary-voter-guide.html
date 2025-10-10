@@ -76,6 +76,8 @@
     <script>
         const GOOGLE_MAPS_API_KEY = 'AIzaSyDrt3pufqoeYZlipaTBmYPvpBMSRwwdg9s';
         let wardIndex = { community: {} };
+        let addressIndex = {}; // normalizedAddress -> community
+        let addressIndexLoaded = false;
         let trackerCandidates = null;
         let autocompleteService = null;
         let geocoder = null;
@@ -102,6 +104,36 @@
         }
         // Ensure callback is globally accessible
         window.initServices = initServices;
+
+        async function loadAddressDataset() {
+            try {
+                const url = 'https://ajgqyygtstihrwjovhes.supabase.co/storage/v1/object/public/YYC%20addresses/filtered_property_data.json';
+                const res = await fetch(url, { cache: 'no-store' });
+                if (!res.ok) return;
+                const json = await res.json();
+                const rows = Array.isArray(json) ? json : (json && (json.rows || json.data)) || [];
+                if (!Array.isArray(rows)) return;
+                const sample = rows[0] || {};
+                const { addressKey, communityKey } = detectAddressJsonKeys(sample);
+                if (!addressKey || !communityKey) return;
+                const idx = {};
+                let count = 0;
+                for (const row of rows) {
+                    const addr = String(row[addressKey] ?? '').trim();
+                    const community = String(row[communityKey] ?? '').trim();
+                    if (!addr || !community) continue;
+                    idx[normalizeAddress(addr)] = community;
+                    count++;
+                }
+                if (count > 0) {
+                    addressIndex = idx;
+                    addressIndexLoaded = true;
+                    console.log('Address index loaded:', count);
+                }
+            } catch (e) {
+                console.warn('Failed to load address dataset', e);
+            }
+        }
 
         async function loadWardMapping() {
             try {
@@ -185,7 +217,13 @@
                 item.addEventListener('click', () => {
                     addressInput.value = prediction.description;
                     dropdown.classList.remove('active');
-                    geocodeAddress(prediction.description);
+                    // Prefer dataset match first
+                    const fromDataset = addressIndex[normalizeAddress(prediction.description)];
+                    if (fromDataset) {
+                        lookupByCommunity(fromDataset, { source: 'Address dataset' });
+                    } else {
+                        geocodeAddress(prediction.description);
+                    }
                 });
                 dropdown.appendChild(item);
             });
@@ -196,6 +234,14 @@
             const address = addressInput.value.trim();
             if (!address) { showAlert('Please enter an address', 'error'); return; }
             if (Object.keys(wardIndex.community).length === 0) { showAlert('Ward mapping not loaded', 'info'); return; }
+            // Dataset first
+            if (addressIndexLoaded) {
+                const fromDataset = addressIndex[normalizeAddress(address)];
+                if (fromDataset) {
+                    lookupByCommunity(fromDataset, { source: 'Address dataset' });
+                    return;
+                }
+            }
             geocodeAddress(address);
         }
 
@@ -219,13 +265,19 @@
 
         function getCommunityFromComponents(components) {
             if (!components) return null;
-            let neighborhood = null, sublocality = null;
+            let neighborhood = null, sublocality = null, colloquial = null, sublocality1 = null;
             components.forEach(component => {
                 const types = component.types || [];
                 if (types.includes('neighborhood')) neighborhood = component.long_name;
-                if (types.includes('sublocality') || types.includes('sublocality_level_1')) sublocality = component.long_name;
+                if (types.includes('sublocality')) sublocality = component.long_name;
+                if (types.includes('sublocality_level_1')) sublocality1 = component.long_name;
+                if (types.includes('colloquial_area')) colloquial = component.long_name;
             });
-            return neighborhood || sublocality;
+            const candidate = neighborhood || sublocality1 || sublocality || colloquial || null;
+            // Filter out generic quadrants and city-wide names
+            if (!candidate) return null;
+            if (/^(CALGARY|NORTH\s*EAST|NORTH\s*WEST|SOUTH\s*EAST|SOUTH\s*WEST|NE|NW|SE|SW)$/i.test(candidate)) return null;
+            return candidate;
         }
 
         function lookupByCommunity(community) {
@@ -293,7 +345,49 @@
         }
 
         function normalizeKey(value) {
-            return value.toUpperCase().trim().replace(/\./g, '').replace(/-/g, ' ').replace(/\//g, ' ').replace(/\s+/g, ' ').replace(/\bN\s*E\b/g, 'NE').replace(/\bN\s*W\b/g, 'NW').replace(/\bS\s*E\b/g, 'SE').replace(/\bS\s*W\b/g, 'SW');
+            return value.toUpperCase().trim()
+                .replace(/\./g, '')
+                .replace(/-/g, ' ')
+                .replace(/\//g, ' ')
+                .replace(/\s+/g, ' ')
+                .replace(/\bN\s*E\b/g, 'NE')
+                .replace(/\bN\s*W\b/g, 'NW')
+                .replace(/\bS\s*E\b/g, 'SE')
+                .replace(/\bS\s*W\b/g, 'SW')
+                .replace(/\bNORTH\s*EAST\b/g, 'NE')
+                .replace(/\bNORTH\s*WEST\b/g, 'NW')
+                .replace(/\bSOUTH\s*EAST\b/g, 'SE')
+                .replace(/\bSOUTH\s*WEST\b/g, 'SW');
+        }
+
+        function normalizeAddress(value) {
+            return (value || '')
+                .toUpperCase().trim()
+                .replace(/\./g, '')
+                .replace(/\s+/g, ' ')
+                .replace(/,\s*CANADA$/i, '')
+                .replace(/,\s*ALBERTA$/i, '')
+                .replace(/,\s*AB$/i, '')
+                .replace(/,\s*CALGARY$/i, '')
+                .replace(/\bNORTH\s*EAST\b/g, 'NE')
+                .replace(/\bNORTH\s*WEST\b/g, 'NW')
+                .replace(/\bSOUTH\s*EAST\b/g, 'SE')
+                .replace(/\bSOUTH\s*WEST\b/g, 'SW')
+                .replace(/\bST\b/g, 'STREET')
+                .replace(/\bAVE\b/g, 'AVENUE')
+                .replace(/\bRD\b/g, 'ROAD')
+                .replace(/\bDR\b/g, 'DRIVE');
+        }
+
+        function detectAddressJsonKeys(sample) {
+            const keys = Object.keys(sample || {});
+            let addressKey = null, communityKey = null;
+            keys.forEach(k => {
+                const l = k.toLowerCase();
+                if (!addressKey && (l.includes('address') || l.includes('full_address') || l.includes('street'))) addressKey = k;
+                if (!communityKey && (l === 'com_name' || l.includes('community') || l.includes('neigh'))) communityKey = k;
+            });
+            return { addressKey, communityKey };
         }
 
         document.addEventListener('click', function(e) {
@@ -311,6 +405,7 @@
 
         initGoogleMaps();
         loadWardMapping();
+        loadAddressDataset();
         loadTrackerCandidates();
     </script>
 </body>
