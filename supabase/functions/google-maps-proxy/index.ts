@@ -13,32 +13,43 @@ serve(async (req) => {
   }
 
   try {
-    // Get the authorization header
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      return new Response(
-        JSON.stringify({ error: 'Missing authorization header' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    // Accept either a valid Supabase user JWT or the project anon key
+    const authHeader = req.headers.get('Authorization') ?? '';
+    const apiKeyHeader = req.headers.get('apikey') ?? '';
+    const anonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
+
+    const bearerToken = authHeader.toLowerCase().startsWith('bearer ')
+      ? authHeader.slice(7).trim()
+      : '';
+
+    let isAuthorized = false;
+
+    // Case 1: Client presents anon key via apikey header or as bearer token
+    if ((apiKeyHeader && anonKey && apiKeyHeader === anonKey) || (bearerToken && anonKey && bearerToken === anonKey)) {
+      isAuthorized = true;
+    } else if (bearerToken) {
+      // Case 2: Verify a real user JWT
+      const supabaseClient = createClient(
+        Deno.env.get('SUPABASE_URL') ?? '',
+        anonKey,
+        {
+          global: {
+            headers: { Authorization: `Bearer ${bearerToken}` },
+          },
+        }
       );
+
+      const {
+        data: { user },
+        error: userError,
+      } = await supabaseClient.auth.getUser();
+
+      if (!userError && user) {
+        isAuthorized = true;
+      }
     }
 
-    // Verify the JWT token
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      {
-        global: {
-          headers: { Authorization: authHeader },
-        },
-      }
-    );
-
-    const {
-      data: { user },
-      error: userError,
-    } = await supabaseClient.auth.getUser();
-
-    if (userError || !user) {
+    if (!isAuthorized) {
       return new Response(
         JSON.stringify({ error: 'Unauthorized' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

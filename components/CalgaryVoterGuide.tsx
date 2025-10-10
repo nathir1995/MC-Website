@@ -29,6 +29,8 @@ export default function CalgaryVoterGuide() {
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [wardCsvInfo, setWardCsvInfo] = useState<{ filename: string; rows: number } | null>(null);
   const [candidateCsvInfo, setCandidateCsvInfo] = useState<{ filename: string; rows: number } | null>(null);
+  const [addressCommunityIndex, setAddressCommunityIndex] = useState<Record<string, string>>({});
+  const [addressJsonInfo, setAddressJsonInfo] = useState<{ url: string; rows: number } | null>(null);
   
   const debounceTimer = useRef<NodeJS.Timeout>();
 
@@ -36,8 +38,40 @@ export default function CalgaryVoterGuide() {
   useEffect(() => {
     loadWardCommunities();
     loadCandidates();
+    // Attempt to preload provided address→community dataset
+    preloadAddressDataset();
     setMapsReady(true); // Ready to use proxy
   }, []);
+
+  async function preloadAddressDataset() {
+    const url = 'https://ajgqyygtstihrwjovhes.supabase.co/storage/v1/object/public/YYC%20addresses/filtered_property_data.json';
+    try {
+      const res = await fetch(url, { cache: 'no-store' });
+      if (!res.ok) return;
+      const json = await res.json();
+      const rows: Record<string, any>[] = Array.isArray(json) ? json : (json?.rows || json?.data || []);
+      if (!Array.isArray(rows) || rows.length === 0) return;
+
+      const { addressKey, communityKey } = detectAddressJsonKeys(rows[0]);
+      if (!addressKey || !communityKey) return;
+
+      const index: Record<string, string> = {};
+      let count = 0;
+      for (const row of rows) {
+        const addr = String(row[addressKey] ?? '').trim();
+        const comm = String(row[communityKey] ?? '').trim();
+        if (!addr || !comm) continue;
+        index[normalizeAddress(addr)] = comm;
+        count += 1;
+      }
+      if (count > 0) {
+        setAddressCommunityIndex(index);
+        setAddressJsonInfo({ url, rows: count });
+      }
+    } catch (_e) {
+      // ignore if dataset not reachable
+    }
+  }
 
   async function handleWardCsvUpload(file: File) {
     try {
@@ -183,6 +217,17 @@ export default function CalgaryVoterGuide() {
       return;
     }
 
+    // If address dataset is loaded, show a quick deterministic suggestion match
+    if (Object.keys(addressCommunityIndex).length > 0) {
+      const norm = normalizeAddress(value);
+      const comm = addressCommunityIndex[norm];
+      if (comm) {
+        setSuggestions([{ description: value }] as any[]);
+        setShowDropdown(true);
+        return;
+      }
+    }
+
     // Debounce
     if (debounceTimer.current) {
       clearTimeout(debounceTimer.current);
@@ -232,6 +277,14 @@ export default function CalgaryVoterGuide() {
 
     if (Object.keys(wardIndex.community).length === 0) {
       showAlert('Ward mapping not loaded. Please wait and try again.', 'info');
+      return;
+    }
+
+    // Prefer dataset lookup if available
+    const addrNorm = normalizeAddress(address);
+    const communityFromDataset = addressCommunityIndex[addrNorm];
+    if (communityFromDataset) {
+      lookupByCommunity(communityFromDataset);
       return;
     }
 
@@ -444,6 +497,38 @@ export default function CalgaryVoterGuide() {
     }
     values.push(current);
     return values.map(v => v.trim());
+  }
+
+  function normalizeAddress(value: string) {
+    return value
+      .toUpperCase()
+      .trim()
+      .replace(/\./g, '')
+      .replace(/\s+/g, ' ')
+      .replace(/,\s*CANADA$/i, '')
+      .replace(/,\s*AB$/i, '')
+      .replace(/,\s*ALBERTA$/i, '')
+      .replace(/,\s*CALGARY$/i, '')
+      .replace(/\bST\b/g, 'STREET')
+      .replace(/\bAVE\b/g, 'AVENUE')
+      .replace(/\bRD\b/g, 'ROAD')
+      .replace(/\bDR\b/g, 'DRIVE')
+      .replace(/\bSW\b/g, 'SW')
+      .replace(/\bSE\b/g, 'SE')
+      .replace(/\bNW\b/g, 'NW')
+      .replace(/\bNE\b/g, 'NE');
+  }
+
+  function detectAddressJsonKeys(sample: Record<string, any>) {
+    const keys = Object.keys(sample);
+    let addressKey: string | null = null;
+    let communityKey: string | null = null;
+    for (const key of keys) {
+      const k = key.toLowerCase();
+      if (!addressKey && (/address/.test(k) || /street/.test(k) || /full_?address/.test(k))) addressKey = key;
+      if (!communityKey && (/community/.test(k) || /neighbo(u)?rhood/.test(k))) communityKey = key;
+    }
+    return { addressKey, communityKey };
   }
 
   return (
