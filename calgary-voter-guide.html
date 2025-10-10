@@ -88,6 +88,10 @@
             script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places&callback=initServices`;
             script.async = true;
             script.defer = true;
+            script.onerror = () => {
+                showAlert('Failed to load Google Maps. Check API key and referrer restrictions.', 'error');
+                console.error('Google Maps JS failed to load');
+            };
             document.head.appendChild(script);
         }
 
@@ -96,6 +100,8 @@
             geocoder = new google.maps.Geocoder();
             console.log('Google Maps initialized');
         }
+        // Ensure callback is globally accessible
+        window.initServices = initServices;
 
         async function loadWardMapping() {
             try {
@@ -158,8 +164,18 @@
 
         function displaySuggestions(predictions, status) {
             dropdown.innerHTML = '';
-            if (status !== google.maps.places.PlacesServiceStatus.OK || !predictions) {
+            const ok = (google.maps.places.PlacesServiceStatus && google.maps.places.PlacesServiceStatus.OK)
+              || (google.maps.places.AutocompleteServiceStatus && google.maps.places.AutocompleteServiceStatus.OK);
+            if (status !== ok || !predictions || predictions.length === 0) {
                 dropdown.classList.remove('active');
+                if (typeof status === 'string' && status !== ok) {
+                    // Surface common misconfigurations for easier debugging
+                    if (status === 'REQUEST_DENIED') {
+                        showAlert('Autocomplete request denied. Ensure Places API is enabled and referrer/domain is allowed.', 'error');
+                    } else if (status === 'INVALID_REQUEST') {
+                        showAlert('Invalid autocomplete request. Try typing a fuller address.', 'error');
+                    }
+                }
                 return;
             }
             predictions.forEach(prediction => {
