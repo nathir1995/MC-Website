@@ -28,31 +28,98 @@ export default function CalgaryVoterGuide() {
   const [wardIndex, setWardIndex] = useState<WardData>({ community: {}, postal: {}, fsa: {} });
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   
+  const [addressCommunityIndex, setAddressCommunityIndex] = useState<Record<string, string>>({});
+  
   const debounceTimer = useRef<NodeJS.Timeout>();
 
   // Load ward communities and candidates on mount
   useEffect(() => {
     loadWardCommunities();
     loadCandidates();
+    // Attempt to preload provided address→community dataset
+    preloadAddressDataset();
     setMapsReady(true); // Ready to use proxy
   }, []);
 
+  async function preloadAddressDataset() {
+    const url = 'https://ajgqyygtstihrwjovhes.supabase.co/storage/v1/object/public/YYC%20addresses/filtered_property_data.json';
+    try {
+      const res = await fetch(url, { cache: 'no-store' });
+      if (!res.ok) return;
+      const json = await res.json();
+      const rows: Record<string, any>[] = Array.isArray(json) ? json : (json?.rows || json?.data || []);
+      if (!Array.isArray(rows) || rows.length === 0) return;
+
+      const { addressKey, communityKey } = detectAddressJsonKeys(rows[0]);
+      if (!addressKey || !communityKey) return;
+
+      const index: Record<string, string> = {};
+      let count = 0;
+      for (const row of rows) {
+        const addr = String(row[addressKey] ?? '').trim();
+        const comm = String(row[communityKey] ?? '').trim();
+        if (!addr || !comm) continue;
+        index[normalizeAddress(addr)] = comm;
+        count += 1;
+      }
+      if (count > 0) {
+        setAddressCommunityIndex(index);
+      }
+    } catch (_e) {
+      // ignore if dataset not reachable
+    }
+  }
+
+  
+
   async function loadWardCommunities() {
     try {
+      // Prefer ward-specific files (ward-1.json ... ward-14.json)
+      const wardNumbers = Array.from({ length: 14 }, (_, i) => i + 1);
+      const lists = await Promise.all(
+        wardNumbers.map(async (n) => {
+          try {
+            const r = await fetch(`/assets/data/calgary/wards/ward-${n}.json`);
+            if (!r.ok) return null;
+            return await r.json();
+          } catch {
+            return null;
+          }
+        })
+      );
+
+      const newIndexFromFiles: WardData = { community: {}, postal: {}, fsa: {} };
+      let totalFromFiles = 0;
+      lists.forEach((arr, idx) => {
+        if (Array.isArray(arr)) {
+          const wardStr = String(wardNumbers[idx]);
+          arr.forEach((comm: string) => {
+            newIndexFromFiles.community[normalizeKey(comm)] = wardStr;
+            totalFromFiles += 1;
+          });
+        }
+      });
+
+      if (totalFromFiles > 0) {
+        setWardIndex(newIndexFromFiles);
+        // eslint-disable-next-line no-console
+        console.log('Ward mapping loaded from ward files:', totalFromFiles, 'communities');
+        return;
+      }
+
+      // Fallback: aggregated mapping file
       const res = await fetch('/assets/data/calgary/ward-communities.json');
       if (res.ok) {
         const data = await res.json();
-        const newIndex: WardData = { community: {}, postal: {}, fsa: {} };
-        
+        const fallbackIndex: WardData = { community: {}, postal: {}, fsa: {} };
         Object.entries<any>(data).forEach(([ward, communities]) => {
           (communities || []).forEach((comm: string) => {
-            newIndex.community[normalizeKey(comm)] = String(ward);
+            fallbackIndex.community[normalizeKey(comm)] = String(ward);
           });
         });
-        
-        setWardIndex(newIndex);
+        setWardIndex(fallbackIndex);
         // eslint-disable-next-line no-console
-        console.log('Ward mapping loaded:', Object.keys(newIndex.community).length, 'communities');
+        console.log('Ward mapping loaded from aggregated file:', Object.keys(fallbackIndex.community).length);
       }
     } catch (e) {
       // eslint-disable-next-line no-console
@@ -94,6 +161,17 @@ export default function CalgaryVoterGuide() {
       return;
     }
 
+    // If address dataset is loaded, show a quick deterministic suggestion match
+    if (Object.keys(addressCommunityIndex).length > 0) {
+      const norm = normalizeAddress(value);
+      const comm = addressCommunityIndex[norm];
+      if (comm) {
+        setSuggestions([{ description: value }] as any[]);
+        setShowDropdown(true);
+        return;
+      }
+    }
+
     // Debounce
     if (debounceTimer.current) {
       clearTimeout(debounceTimer.current);
@@ -127,6 +205,13 @@ export default function CalgaryVoterGuide() {
   function selectSuggestion(prediction: any) {
     setAddress(prediction.description);
     setShowDropdown(false);
+    // Prefer dataset mapping when available
+    const addrNorm = normalizeAddress(prediction.description || '');
+    const communityFromDataset = addressCommunityIndex[addrNorm];
+    if (communityFromDataset) {
+      lookupByCommunity(communityFromDataset);
+      return;
+    }
     geocodeAddress(prediction.description);
   }
 
@@ -143,6 +228,14 @@ export default function CalgaryVoterGuide() {
 
     if (Object.keys(wardIndex.community).length === 0) {
       showAlert('Ward mapping not loaded. Please wait and try again.', 'info');
+      return;
+    }
+
+    // Prefer dataset lookup if available
+    const addrNorm = normalizeAddress(address);
+    const communityFromDataset = addressCommunityIndex[addrNorm];
+    if (communityFromDataset) {
+      lookupByCommunity(communityFromDataset);
       return;
     }
 
@@ -254,6 +347,53 @@ export default function CalgaryVoterGuide() {
       .replace(/\bS\s*W\b/g, 'SW');
   }
 
+  function normalizeWard(value: string) {
+    const digits = (value.match(/\d+/)?.[0] || '').trim();
+    return digits || '';
+  }
+
+  function normalizePosition(value: string) {
+    const v = value.trim().toLowerCase();
+    if (/mayor/.test(v)) return 'Mayor';
+    if (/coun(c|s)il/.test(v)) return 'Councillor';
+    if (/trustee|school/.test(v)) return 'Trustee';
+    return value;
+  }
+
+  
+
+  function normalizeAddress(value: string) {
+    return value
+      .toUpperCase()
+      .trim()
+      .replace(/\./g, '')
+      .replace(/\s+/g, ' ')
+      .replace(/,\s*CANADA$/i, '')
+      .replace(/,\s*AB$/i, '')
+      .replace(/,\s*ALBERTA$/i, '')
+      .replace(/,\s*CALGARY$/i, '')
+      .replace(/\bST\b/g, 'STREET')
+      .replace(/\bAVE\b/g, 'AVENUE')
+      .replace(/\bRD\b/g, 'ROAD')
+      .replace(/\bDR\b/g, 'DRIVE')
+      .replace(/\bSW\b/g, 'SW')
+      .replace(/\bSE\b/g, 'SE')
+      .replace(/\bNW\b/g, 'NW')
+      .replace(/\bNE\b/g, 'NE');
+  }
+
+  function detectAddressJsonKeys(sample: Record<string, any>) {
+    const keys = Object.keys(sample);
+    let addressKey: string | null = null;
+    let communityKey: string | null = null;
+    for (const key of keys) {
+      const k = key.toLowerCase();
+      if (!addressKey && (/address/.test(k) || /street/.test(k) || /full_?address/.test(k))) addressKey = key;
+      if (!communityKey && (/community/.test(k) || /neighbo(u)?rhood/.test(k))) communityKey = key;
+    }
+    return { addressKey, communityKey };
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-500 to-purple-600 p-8">
       <div className="max-w-4xl mx-auto">
@@ -263,6 +403,7 @@ export default function CalgaryVoterGuide() {
         </div>
 
         <div className="bg-white rounded-3xl shadow-2xl p-10">
+          
           <div className="bg-gray-50 border-2 border-dashed border-gray-300 rounded-2xl p-4 mb-6">
             <div className={`inline-block px-3 py-1 rounded-lg text-sm font-semibold mb-2 ${
               mapsReady ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
