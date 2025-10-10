@@ -98,7 +98,7 @@
     <script>
         // Supabase configuration
         const SUPABASE_URL = 'https://ajgqyygtstihrwjovhes.supabase.co';
-        const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY'; // Replace with your actual anon key
+        const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY'; // Will be overridden by remote config when available
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         // State
@@ -107,6 +107,13 @@
         let wardIndex = { community: {}, postal: {}, fsa: {} };
         let trackerCandidates = null;
         let debounceTimer;
+        let effectiveAnonKey = SUPABASE_ANON_KEY;
+        let addressIndex = {}; // normalizedAddress -> community
+
+        // Optional remote config (anon key / maps key)
+        const SUPABASE_CONFIG_URL = 'https://ajgqyygtstihrwjovhes.supabase.co/storage/v1/object/public/YYC%20addresses/maps_config.json';
+        // Address index (public Supabase storage JSON)
+        const SUPABASE_JSON_URL = 'https://ajgqyygtstihrwjovhes.supabase.co/storage/v1/object/public/YYC%20addresses/filtered_property_data.json';
 
         const addressInput = document.getElementById('addressInput');
         const searchBtn = document.getElementById('searchBtn');
@@ -130,6 +137,7 @@
             currentUser = session.user;
             userToken = session.access_token;
             updateStatus('ready', '✅ Ready');
+            await initSupabaseConfig();
             
             // Enable inputs
             addressInput.disabled = false;
@@ -138,6 +146,7 @@
             // Load data
             await Promise.all([
                 loadWardCommunities(),
+                loadAddressIndexFromSupabase(),
                 loadTrackerCandidates()
             ]);
         }
@@ -162,7 +171,7 @@
                 method: 'GET',
                 headers: {
                     'Authorization': `Bearer ${userToken}`,
-                    'apikey': SUPABASE_ANON_KEY,
+                    'apikey': effectiveAnonKey,
                     'Accept': 'application/json'
                 }
             });
@@ -180,6 +189,17 @@
             }
 
             return await response.json();
+        }
+
+        // Load anon key from remote config if available (non-fatal if missing)
+        async function initSupabaseConfig() {
+            try {
+                const res = await fetch(SUPABASE_CONFIG_URL, { cache: 'no-store' });
+                if (!res.ok) return;
+                const cfg = await res.json();
+                const anon = (cfg.supabaseAnonKey || cfg.SUPABASE_ANON_KEY || '').trim();
+                if (anon) effectiveAnonKey = anon;
+            } catch {}
         }
 
         // Autocomplete
@@ -241,6 +261,14 @@
                 return;
             }
 
+            // Try direct address -> community mapping first (from Supabase dataset)
+            const aiKey = normalizeAddressKey(address);
+            if (addressIndex[aiKey]) {
+                lookupByCommunity(addressIndex[aiKey]);
+                return;
+            }
+
+            // Fallback to geocoding via proxy
             geocodeAddress(address + ', Calgary, AB');
         }
 
@@ -356,19 +384,71 @@
         // Load data functions
         async function loadWardCommunities() {
             try {
-                const res = await fetch('assets/data/calgary/ward-communities.json');
-                if (res.ok) {
-                    const data = await res.json();
-                    Object.entries(data).forEach(([ward, communities]) => {
-                        communities.forEach(comm => {
-                            wardIndex.community[normalizeKey(comm)] = ward;
-                        });
-                    });
-                    console.log('Ward mapping loaded:', Object.keys(wardIndex.community).length, 'communities');
+                // Prefer per-ward JSON files; fall back to bundled mapping if present
+                wardIndex.community = {};
+                let loaded = 0;
+                for (let i = 1; i <= 14; i++) {
+                    const url = `assets/data/calgary/wards/ward-${i}.json`;
+                    try {
+                        const r = await fetch(url, { cache: 'no-store' });
+                        if (!r.ok) continue;
+                        const arr = await r.json();
+                        if (Array.isArray(arr)) {
+                            arr.forEach(name => { if (name) wardIndex.community[normalizeKey(name)] = String(i); });
+                            loaded++;
+                        }
+                    } catch {}
                 }
+                if (loaded === 0) {
+                    const res = await fetch('assets/data/calgary/ward-communities.json', { cache: 'no-store' });
+                    if (res.ok) {
+                        const data = await res.json();
+                        Object.entries(data).forEach(([ward, communities]) => {
+                            (communities || []).forEach(comm => { if (comm) wardIndex.community[normalizeKey(comm)] = String(ward); });
+                        });
+                        loaded = Object.keys(wardIndex.community).length > 0 ? 1 : 0;
+                    }
+                }
+                if (!loaded) showAlert('Ward mapping files not found. Please add ward JSONs under assets/data/calgary/wards/.', 'info');
+                else console.log('Ward mapping entries:', Object.keys(wardIndex.community).length);
             } catch (e) {
                 console.error('Failed to load ward mapping:', e);
             }
+        }
+
+        async function loadAddressIndexFromSupabase() {
+            try {
+                addressIndex = {};
+                const res = await fetch(SUPABASE_JSON_URL, { cache: 'force-cache' });
+                if (!res.ok) return;
+                const raw = await res.text();
+                let rows = [];
+                try {
+                    const parsed = JSON.parse(raw);
+                    rows = Array.isArray(parsed) ? parsed : (parsed.records || []);
+                } catch {
+                    rows = raw.split(/\r?\n/).map(l => l.trim()).filter(Boolean).map(l => { try { return JSON.parse(l); } catch { return null; } }).filter(Boolean);
+                }
+                if (!rows || rows.length === 0) return;
+                const communityKeys = ['community','Community','COMMUNITY','NEIGHBOURHOOD','Neighbourhood','NEIGHBORHOOD','COMM_NAME','CommunityName'];
+                const addressKeys = ['address','Address','ADDRESS','full_address','FullAddress','FULL_ADDRESS','street_address','StreetAddress'];
+                const pickString = (obj, keys) => {
+                    for (const k of keys) {
+                        if (Object.prototype.hasOwnProperty.call(obj, k)) {
+                            const v = (obj[k] ?? '').toString().trim();
+                            if (v) return v;
+                        }
+                    }
+                    return '';
+                };
+                let added = 0;
+                for (const r of rows) {
+                    const a = pickString(r, addressKeys);
+                    const c = pickString(r, communityKeys);
+                    if (a && c) { addressIndex[normalizeAddressKey(a)] = c; added++; }
+                }
+                if (added) console.log(`Loaded ${added} address→community entries from Supabase`);
+            } catch {}
         }
 
         async function loadTrackerCandidates() {
@@ -423,6 +503,24 @@
                 .replace(/\bN\s*W\b/g, 'NW')
                 .replace(/\bS\s*E\b/g, 'SE')
                 .replace(/\bS\s*W\b/g, 'SW');
+        }
+
+        function normalizeAddressKey(v) {
+            return (v || '')
+                .toUpperCase()
+                .replace(/CALGARY,?\s*AB/i, '')
+                .replace(/,\s*/g, ' ')
+                .replace(/\./g, '')
+                .replace(/\bST\b/g, 'STREET')
+                .replace(/\bAVE\b/g, 'AVENUE')
+                .replace(/\bRD\b/g, 'ROAD')
+                .replace(/\bDR\b/g, 'DRIVE')
+                .replace(/\bNE\b|\bN E\b/g, 'NE')
+                .replace(/\bNW\b|\bN W\b/g, 'NW')
+                .replace(/\bSE\b|\bS E\b/g, 'SE')
+                .replace(/\bSW\b|\bS W\b/g, 'SW')
+                .replace(/\s+/g, ' ')
+                .trim();
         }
 
         // Event listeners
