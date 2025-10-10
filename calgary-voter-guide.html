@@ -54,7 +54,6 @@
         .status-loading { background: #fef3c7; color: #92400e; }
         .status-ready { background: #d1fae5; color: #065f46; }
         .status-error { background: #fee2e2; color: #991b1b; }
-        .debug-info { background: #f3f4f6; padding: 12px; border-radius: 8px; font-size: 0.85rem; color: #666; margin-top: 10px; font-family: monospace; }
         @keyframes slideIn { from { opacity: 0; transform: translateX(-20px); } to { opacity: 1; transform: translateX(0); } }
         @keyframes slideInRight { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
         @keyframes scaleIn { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
@@ -78,7 +77,6 @@
             <div class="info-note">
                 <div id="statusBadge" class="status-badge status-loading">⏳ Loading address database...</div>
                 <div>Enter your address to find your Calgary ward.</div>
-                <div id="debugInfo" class="debug-info" style="display:none;"></div>
             </div>
 
             <div class="search-section">
@@ -99,509 +97,127 @@
     </div>
 
     <script>
-<<<<<<< HEAD
-        // Supabase configuration
-        const SUPABASE_URL = 'https://ajgqyygtstihrwjovhes.supabase.co';
-        const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY'; // Will be overridden by remote config when available
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-=======
-        // ONLY public Supabase Storage - NO API calls, NO authentication
         const SUPABASE_DATA_URL = 'https://ajgqyygtstihrwjovhes.supabase.co/storage/v1/object/public/YYC%20addresses/filtered_property_data.json';
->>>>>>> origin/main
-
-        // State
         let addressData = [];
         let addressIndex = new Map();
         let wardIndex = { community: {} };
         let trackerCandidates = null;
         let debounceTimer;
-        let effectiveAnonKey = SUPABASE_ANON_KEY;
-        let addressIndex = {}; // normalizedAddress -> community
-
-        // Optional remote config (anon key / maps key)
-        const SUPABASE_CONFIG_URL = 'https://ajgqyygtstihrwjovhes.supabase.co/storage/v1/object/public/YYC%20addresses/maps_config.json';
-        // Address index (public Supabase storage JSON)
-        const SUPABASE_JSON_URL = 'https://ajgqyygtstihrwjovhes.supabase.co/storage/v1/object/public/YYC%20addresses/filtered_property_data.json';
-
         const addressInput = document.getElementById('addressInput');
         const searchBtn = document.getElementById('searchBtn');
         const dropdown = document.getElementById('autocompleteDropdown');
         const statusBadge = document.getElementById('statusBadge');
-        const debugInfo = document.getElementById('debugInfo');
-
-        // Initialize
         async function init() {
             console.log('=== Calgary Voter Guide Initializing ===');
-            console.log('This tool uses NO authentication');
-            console.log('Data source:', SUPABASE_DATA_URL);
-            
-<<<<<<< HEAD
-            if (!session || !session.user) {
-                updateStatus('error', '🔒 Authentication required');
-                authPrompt.style.display = 'block';
-                mainContent.style.display = 'none';
-                return;
-            }
-
-            currentUser = session.user;
-            userToken = session.access_token;
-            updateStatus('ready', '✅ Ready');
-            await initSupabaseConfig();
-            
-            // Enable inputs
-            addressInput.disabled = false;
-            searchBtn.disabled = false;
-
-            // Load data
-=======
->>>>>>> origin/main
-            await Promise.all([
-                loadAddressData(),
-                loadWardCommunities(),
-                loadAddressIndexFromSupabase(),
-                loadTrackerCandidates()
-            ]);
+            await Promise.all([loadAddressData(), loadWardCommunities(), loadTrackerCandidates()]);
         }
-
         function updateStatus(status, text) {
             statusBadge.className = `status-badge status-${status}`;
             statusBadge.textContent = text;
         }
-
-<<<<<<< HEAD
-        // Call Supabase Edge Function proxy
-        async function callGoogleMapsProxy(mode, query, country = 'ca') {
-            if (!userToken) {
-                throw new Error('Not authenticated');
-            }
-
-            const url = new URL(`${SUPABASE_URL}/functions/v1/google-maps-proxy`);
-            url.searchParams.append('mode', mode);
-            url.searchParams.append('q', query);
-            url.searchParams.append('country', country);
-
-            const response = await fetch(url.toString(), {
-                method: 'GET',
-                headers: {
-                    'Authorization': `Bearer ${userToken}`,
-                    'apikey': effectiveAnonKey,
-                    'Accept': 'application/json'
-                }
-            });
-
-            if (response.status === 401) {
-                // Session expired
-                authPrompt.style.display = 'block';
-                mainContent.style.display = 'none';
-                throw new Error('Session expired. Please sign in again.');
-            }
-
-            if (!response.ok) {
-                const text = await response.text();
-                throw new Error(`API call failed: ${response.status} - ${text}`);
-            }
-
-            return await response.json();
-        }
-
-        // Load anon key from remote config if available (non-fatal if missing)
-        async function initSupabaseConfig() {
-            try {
-                const res = await fetch(SUPABASE_CONFIG_URL, { cache: 'no-store' });
-                if (!res.ok) return;
-                const cfg = await res.json();
-                const anon = (cfg.supabaseAnonKey || cfg.SUPABASE_ANON_KEY || '').trim();
-                if (anon) effectiveAnonKey = anon;
-            } catch {}
-        }
-
-        // Autocomplete
-        addressInput.addEventListener('input', async function(e) {
-=======
-        function showDebug(message) {
-            debugInfo.style.display = 'block';
-            debugInfo.textContent = message;
-            console.log('DEBUG:', message);
-        }
-
-        // Load address data from Supabase Storage (PUBLIC - no auth needed)
         async function loadAddressData() {
             try {
-                updateStatus('loading', '⏳ Loading Calgary addresses...');
-                showDebug('Fetching from public storage...');
+                updateStatus('loading', '⏳ Loading addresses...');
                 console.log('Fetching:', SUPABASE_DATA_URL);
-                
-                const response = await fetch(SUPABASE_DATA_URL, {
-                    method: 'GET',
-                    mode: 'cors',
-                    cache: 'default'
-                });
-                
-                console.log('Response status:', response.status);
-                console.log('Response headers:', Object.fromEntries([...response.headers.entries()]));
-                
-                if (!response.ok) {
-                    const errorText = await response.text();
-                    console.error('Fetch failed:', response.status, errorText);
-                    throw new Error(`HTTP ${response.status}: ${errorText.substring(0, 200)}`);
-                }
-
+                const response = await fetch(SUPABASE_DATA_URL, { method: 'GET', cache: 'default' });
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
                 const rawText = await response.text();
-                console.log('Received data length:', rawText.length, 'bytes');
-                showDebug(`Downloaded ${(rawText.length / 1024).toFixed(0)}KB of address data`);
-                
-                // Parse JSON
+                console.log('Downloaded:', (rawText.length / 1024).toFixed(0), 'KB');
                 let data;
-                try {
-                    data = JSON.parse(rawText);
-                    console.log('Parsed as JSON');
-                } catch (e) {
-                    console.log('Not standard JSON, trying NDJSON...');
-                    // Try NDJSON
-                    data = rawText.split('\n')
-                        .filter(line => line.trim())
-                        .map(line => {
-                            try {
-                                return JSON.parse(line);
-                            } catch {
-                                return null;
-                            }
-                        })
-                        .filter(Boolean);
-                }
-
-                // Extract records
+                try { data = JSON.parse(rawText); } catch { data = rawText.split('\n').filter(line => line.trim()).map(line => { try { return JSON.parse(line); } catch { return null; } }).filter(Boolean); }
                 addressData = Array.isArray(data) ? data : (data.records || []);
                 console.log('Total records:', addressData.length);
-                showDebug(`Loaded ${addressData.length} address records`);
-                
-                if (addressData.length === 0) {
-                    throw new Error('No address data found in file');
-                }
-
-                // Sample first record to understand structure
-                if (addressData.length > 0) {
-                    console.log('Sample record:', JSON.stringify(addressData[0], null, 2));
-                }
-                
-                // Build search index
                 let indexed = 0;
                 addressData.forEach(record => {
-                    const address = getField(record, ['address', 'Address', 'ADDRESS', 'full_address', 'FULL_ADDRESS', 'street_address', 'StreetAddress']);
-                    const community = getField(record, ['community', 'Community', 'COMMUNITY', 'NEIGHBOURHOOD', 'Neighbourhood', 'NEIGHBORHOOD']);
-                    
-                    if (address && community) {
-                        const normalizedAddr = normalizeAddress(address);
-                        addressIndex.set(normalizedAddr, {
-                            address: address,
-                            community: community,
-                            original: record
-                        });
-                        indexed++;
-                    }
+                    const address = getField(record, ['address', 'Address', 'ADDRESS', 'full_address', 'street_address']);
+                    const community = getField(record, ['community', 'Community', 'COMMUNITY', 'NEIGHBOURHOOD', 'Neighbourhood']);
+                    if (address && community) { addressIndex.set(normalizeAddress(address), { address: address, community: community }); indexed++; }
                 });
-
-                console.log('Indexed addresses:', indexed);
-                showDebug(`Indexed ${indexed} searchable addresses`);
-                
-                if (indexed === 0) {
-                    throw new Error('Could not index any addresses - check field names');
-                }
-
+                console.log('Indexed:', indexed, 'addresses');
                 updateStatus('ready', '✅ Ready');
-                debugInfo.style.display = 'none';
                 addressInput.disabled = false;
                 searchBtn.disabled = false;
-                
             } catch (error) {
-                console.error('FATAL ERROR loading address data:', error);
+                console.error('Load error:', error);
                 updateStatus('error', '❌ Failed to load');
-                showDebug(`Error: ${error.message}`);
-                showAlert(`Failed to load address database: ${error.message}`, 'error');
+                showAlert('Failed to load address database: ' + error.message, 'error');
             }
         }
-
-        // Helper to get field with multiple possible names
-        function getField(obj, fieldNames) {
-            for (const name of fieldNames) {
-                if (obj[name] !== undefined && obj[name] !== null) {
-                    return String(obj[name]).trim();
-                }
-            }
-            return '';
-        }
-
-        // Normalize address for matching
-        function normalizeAddress(addr) {
-            return addr.toUpperCase()
-                .replace(/CALGARY,?\s*AB/gi, '')
-                .replace(/,/g, ' ')
-                .replace(/\./g, '')
-                .replace(/\bSTREET\b/g, 'ST')
-                .replace(/\bAVENUE\b/g, 'AVE')
-                .replace(/\bROAD\b/g, 'RD')
-                .replace(/\bDRIVE\b/g, 'DR')
-                .replace(/\bNORTH EAST\b/g, 'NE')
-                .replace(/\bNORTH WEST\b/g, 'NW')
-                .replace(/\bSOUTH EAST\b/g, 'SE')
-                .replace(/\bSOUTH WEST\b/g, 'SW')
-                .replace(/\s+/g, ' ')
-                .trim();
-        }
-
-        // Address autocomplete (local search - no API calls)
+        function getField(obj, fieldNames) { for (const name of fieldNames) { if (obj[name]) return String(obj[name]).trim(); } return ''; }
+        function normalizeAddress(addr) { return addr.toUpperCase().replace(/CALGARY,?\s*AB/gi, '').replace(/,/g, ' ').replace(/\./g, '').replace(/\bSTREET\b/g, 'ST').replace(/\bAVENUE\b/g, 'AVE').replace(/\bROAD\b/g, 'RD').replace(/\bDRIVE\b/g, 'DR').replace(/\bN\s*E\b/g, 'NE').replace(/\bN\s*W\b/g, 'NW').replace(/\bS\s*E\b/g, 'SE').replace(/\bS\s*W\b/g, 'SW').replace(/\s+/g, ' ').trim(); }
         addressInput.addEventListener('input', function(e) {
->>>>>>> origin/main
             clearTimeout(debounceTimer);
             const value = e.target.value.trim();
-            
-            if (value.length < 3) {
-                dropdown.classList.remove('active');
-                dropdown.innerHTML = '';
-                return;
-            }
-
+            if (value.length < 3) { dropdown.classList.remove('active'); return; }
             debounceTimer = setTimeout(() => {
                 const searchTerm = normalizeAddress(value);
                 const matches = [];
-                
-                // Search through indexed addresses
-                for (const [normalizedAddr, data] of addressIndex.entries()) {
-                    if (normalizedAddr.includes(searchTerm)) {
-                        matches.push(data);
-                        if (matches.length >= 10) break;
-                    }
-                }
-
-                console.log('Autocomplete matches:', matches.length);
+                for (const [normalizedAddr, data] of addressIndex.entries()) { if (normalizedAddr.includes(searchTerm)) { matches.push(data); if (matches.length >= 10) break; } }
                 displaySuggestions(matches);
             }, 200);
         });
-
         function displaySuggestions(matches) {
             dropdown.innerHTML = '';
-            
-            if (!matches || matches.length === 0) {
-                dropdown.classList.remove('active');
-                return;
-            }
-
+            if (!matches || matches.length === 0) { dropdown.classList.remove('active'); return; }
             matches.forEach(match => {
                 const item = document.createElement('div');
                 item.className = 'autocomplete-item';
-                item.innerHTML = `
-                    <div class="main-text">${match.address}</div>
-                    <div class="sub-text">${match.community}</div>
-                `;
-                item.addEventListener('click', () => {
-                    addressInput.value = match.address;
-                    dropdown.classList.remove('active');
-                    lookupByCommunity(match.community, match.address);
-                });
+                item.innerHTML = `<div class="main-text">${match.address}</div><div class="sub-text">${match.community}</div>`;
+                item.addEventListener('click', () => { addressInput.value = match.address; dropdown.classList.remove('active'); lookupByCommunity(match.community, match.address); });
                 dropdown.appendChild(item);
             });
-
             dropdown.classList.add('active');
         }
-
-        // Search
         function searchWard() {
             const address = addressInput.value.trim();
-            
-            if (!address) {
-                showAlert('Please enter an address', 'error');
-                return;
-            }
-
-            // Find in address index
+            if (!address) { showAlert('Please enter an address', 'error'); return; }
             const normalized = normalizeAddress(address);
             const match = addressIndex.get(normalized);
-            
-            if (match) {
-                lookupByCommunity(match.community, match.address);
-                return;
-            }
-
-<<<<<<< HEAD
-            // Try direct address -> community mapping first (from Supabase dataset)
-            const aiKey = normalizeAddressKey(address);
-            if (addressIndex[aiKey]) {
-                lookupByCommunity(addressIndex[aiKey]);
-                return;
-            }
-
-            // Fallback to geocoding via proxy
-            geocodeAddress(address + ', Calgary, AB');
+            if (match) { lookupByCommunity(match.community, match.address); return; }
+            for (const [normalizedAddr, data] of addressIndex.entries()) { if (normalizedAddr.includes(normalized)) { lookupByCommunity(data.community, data.address); return; } }
+            showAlert('Address not found. Please select from suggestions.', 'error');
         }
-
-        async function geocodeAddress(address) {
-            showLoading();
-            
-            try {
-                const data = await callGoogleMapsProxy('geocode', address);
-                
-                if (data.results && data.results.length > 0) {
-                    const result = data.results[0];
-                    const community = getCommunityFromComponents(result.address_components || []);
-                    
-                    if (community) {
-                        lookupByCommunity(community);
-                    } else {
-                        showAlert('Could not determine community from address', 'error');
-                        hideLoading();
-                    }
-                } else {
-                    showAlert('Address not found. Please try a different address.', 'error');
-                    hideLoading();
-=======
-            // Fuzzy search
-            for (const [normalizedAddr, data] of addressIndex.entries()) {
-                if (normalizedAddr.includes(normalized) || normalized.includes(normalizedAddr.substring(0, Math.min(normalized.length, normalizedAddr.length)))) {
-                    lookupByCommunity(data.community, data.address);
-                    return;
->>>>>>> origin/main
-                }
-            }
-            
-            showAlert('Address not found. Please select from autocomplete suggestions.', 'error');
-        }
-
-        function lookupByCommunity(community, address = null) {
+        function lookupByCommunity(community, address) {
             const key = normalizeKey(community);
             const ward = wardIndex.community[key];
-            
-            if (ward) {
-                displayResults(ward, { 
-                    source: 'Address database', 
-                    community: community,
-                    address: address 
-                });
-            } else {
-                showAlert(`Community "${community}" not mapped to a ward yet`, 'error');
-            }
+            if (ward) { displayResults(ward, { community, address }); } else { showAlert(`Community "${community}" not mapped to ward`, 'error'); }
         }
-
         function displayResults(ward, options = {}) {
             dropdown.classList.remove('active');
-            
             const { mayors, councillors } = getCandidatesForWard(ward);
-            
-            let sourceText = options.source || 'Match found';
+            let sourceText = 'Address matched';
             if (options.address) sourceText += ` – ${options.address}`;
             if (options.community) sourceText += ` (${options.community})`;
-            
-            const sourceNote = `<div class="alert alert-success"><span>✅</span><span>${sourceText}</span></div>`;
-            
-            let html = `${sourceNote}<div class="ward-badge"><h2>Your Ward</h2><div class="ward-number">Ward ${ward}</div></div>`;
-            
-            if (mayors.length > 0) {
-                html += renderCandidateSection('Mayor Candidates', 'mayor-icon', mayors, 'City-wide');
-            }
-            
-            if (councillors.length > 0) {
-                html += renderCandidateSection('Councillor Candidates', 'councillor-icon', councillors, `Ward ${ward}`);
-            }
-            
-            if (mayors.length === 0 && councillors.length === 0) {
-                html += `<div class="alert alert-info"><span>ℹ️</span><span>Candidate data not available</span></div>`;
-            }
-            
+            let html = `<div class="alert alert-success"><span>✅</span><span>${sourceText}</span></div>`;
+            html += `<div class="ward-badge"><h2>Your Ward</h2><div class="ward-number">Ward ${ward}</div></div>`;
+            if (mayors.length > 0) html += renderCandidateSection('Mayor Candidates', 'mayor-icon', mayors, 'City-wide');
+            if (councillors.length > 0) html += renderCandidateSection('Councillor Candidates', 'councillor-icon', councillors, `Ward ${ward}`);
+            if (mayors.length === 0 && councillors.length === 0) html += `<div class="alert alert-info"><span>ℹ️</span><span>Candidate data not available</span></div>`;
             document.getElementById('resultsContainer').innerHTML = html;
         }
-
         function renderCandidateSection(title, iconClass, candidates, wardLabel) {
-            let html = `<div class="candidates-section">
-                <h3 class="section-title">
-                    <span class="section-icon ${iconClass}">👤</span>${title} ${wardLabel ? `(${wardLabel})` : ''}
-                </h3>
-                <div class="candidate-list">`;
-            
+            let html = `<div class="candidates-section"><h3 class="section-title"><span class="section-icon ${iconClass}">👤</span>${title} (${wardLabel})</h3><div class="candidate-list">`;
             candidates.forEach(candidate => {
-                const name = candidate.url ? 
-                    `<a href="${candidate.url}" target="_blank" rel="noopener" class="candidate-name">${candidate.name}</a>` : 
-                    `<span class="candidate-name">${candidate.name}</span>`;
-                
+                const name = candidate.url ? `<a href="${candidate.url}" target="_blank" rel="noopener" class="candidate-name">${candidate.name}</a>` : `<span class="candidate-name">${candidate.name}</span>`;
                 html += `<div class="candidate-card">${name}</div>`;
             });
-            
             html += `</div></div>`;
             return html;
         }
-
-        // Load ward communities mapping (local file)
         async function loadWardCommunities() {
             try {
-                // Prefer per-ward JSON files; fall back to bundled mapping if present
-                wardIndex.community = {};
-                let loaded = 0;
                 for (let i = 1; i <= 14; i++) {
-                    const url = `assets/data/calgary/wards/ward-${i}.json`;
                     try {
-                        const r = await fetch(url, { cache: 'no-store' });
-                        if (!r.ok) continue;
-                        const arr = await r.json();
-                        if (Array.isArray(arr)) {
-                            arr.forEach(name => { if (name) wardIndex.community[normalizeKey(name)] = String(i); });
-                            loaded++;
+                        const res = await fetch(`assets/data/calgary/wards/ward-${i}.json`);
+                        if (res.ok) {
+                            const communities = await res.json();
+                            communities.forEach(name => { wardIndex.community[normalizeKey(name)] = String(i); });
                         }
-                    } catch {}
+                    } catch (e) { console.warn(`Ward ${i} file not found`); }
                 }
-                if (loaded === 0) {
-                    const res = await fetch('assets/data/calgary/ward-communities.json', { cache: 'no-store' });
-                    if (res.ok) {
-                        const data = await res.json();
-                        Object.entries(data).forEach(([ward, communities]) => {
-                            (communities || []).forEach(comm => { if (comm) wardIndex.community[normalizeKey(comm)] = String(ward); });
-                        });
-                        loaded = Object.keys(wardIndex.community).length > 0 ? 1 : 0;
-                    }
-                }
-                if (!loaded) showAlert('Ward mapping files not found. Please add ward JSONs under assets/data/calgary/wards/.', 'info');
-                else console.log('Ward mapping entries:', Object.keys(wardIndex.community).length);
-            } catch (e) {
-                console.error('Failed to load ward mapping:', e);
-            }
+                console.log('Ward mapping loaded:', Object.keys(wardIndex.community).length, 'communities');
+            } catch (e) { console.error('Failed to load ward mapping:', e); }
         }
-
-<<<<<<< HEAD
-        async function loadAddressIndexFromSupabase() {
-            try {
-                addressIndex = {};
-                const res = await fetch(SUPABASE_JSON_URL, { cache: 'force-cache' });
-                if (!res.ok) return;
-                const raw = await res.text();
-                let rows = [];
-                try {
-                    const parsed = JSON.parse(raw);
-                    rows = Array.isArray(parsed) ? parsed : (parsed.records || []);
-                } catch {
-                    rows = raw.split(/\r?\n/).map(l => l.trim()).filter(Boolean).map(l => { try { return JSON.parse(l); } catch { return null; } }).filter(Boolean);
-                }
-                if (!rows || rows.length === 0) return;
-                const communityKeys = ['community','Community','COMMUNITY','NEIGHBOURHOOD','Neighbourhood','NEIGHBORHOOD','COMM_NAME','CommunityName'];
-                const addressKeys = ['address','Address','ADDRESS','full_address','FullAddress','FULL_ADDRESS','street_address','StreetAddress'];
-                const pickString = (obj, keys) => {
-                    for (const k of keys) {
-                        if (Object.prototype.hasOwnProperty.call(obj, k)) {
-                            const v = (obj[k] ?? '').toString().trim();
-                            if (v) return v;
-                        }
-                    }
-                    return '';
-                };
-                let added = 0;
-                for (const r of rows) {
-                    const a = pickString(r, addressKeys);
-                    const c = pickString(r, communityKeys);
-                    if (a && c) { addressIndex[normalizeAddressKey(a)] = c; added++; }
-                }
-                if (added) console.log(`Loaded ${added} address→community entries from Supabase`);
-            } catch {}
-        }
-
-=======
-        // Load candidates (local file)
->>>>>>> origin/main
         async function loadTrackerCandidates() {
             try {
                 const res = await fetch('calgary-2025.html');
@@ -612,75 +228,23 @@
                 if (!m) return;
                 trackerCandidates = Function('"use strict"; return [' + m[1] + '];')();
                 console.log('Loaded candidates:', trackerCandidates.length);
-            } catch (e) {
-                console.error('Failed to load candidates:', e);
-            }
+            } catch (e) { console.error('Failed to load candidates:', e); }
         }
-
         function getCandidatesForWard(ward) {
             const wardStr = String(ward);
             const empty = { mayors: [], councillors: [] };
             if (!Array.isArray(trackerCandidates)) return empty;
-            
-            return {
-                mayors: trackerCandidates.filter(c => c.position === 'Mayor'),
-                councillors: trackerCandidates.filter(c => c.position === 'Councillor' && String(c.ward) === wardStr)
-            };
+            return { mayors: trackerCandidates.filter(c => c.position === 'Mayor'), councillors: trackerCandidates.filter(c => c.position === 'Councillor' && String(c.ward) === wardStr) };
         }
-
-        // Utilities
         function showAlert(message, type) {
             const alertContainer = document.getElementById('alertContainer');
             const icons = { error: '❌', success: '✅', info: 'ℹ️' };
             alertContainer.innerHTML = `<div class="alert alert-${type}"><span>${icons[type]}</span><span>${message}</span></div>`;
             setTimeout(() => { alertContainer.innerHTML = ''; }, 5000);
         }
-
-        function normalizeKey(value) {
-            return value.toUpperCase().trim()
-                .replace(/\./g, '')
-                .replace(/-/g, ' ')
-                .replace(/\s+/g, ' ')
-                .replace(/\bN\s*E\b/g, 'NE')
-                .replace(/\bN\s*W\b/g, 'NW')
-                .replace(/\bS\s*E\b/g, 'SE')
-                .replace(/\bS\s*W\b/g, 'SW');
-        }
-
-        function normalizeAddressKey(v) {
-            return (v || '')
-                .toUpperCase()
-                .replace(/CALGARY,?\s*AB/i, '')
-                .replace(/,\s*/g, ' ')
-                .replace(/\./g, '')
-                .replace(/\bST\b/g, 'STREET')
-                .replace(/\bAVE\b/g, 'AVENUE')
-                .replace(/\bRD\b/g, 'ROAD')
-                .replace(/\bDR\b/g, 'DRIVE')
-                .replace(/\bNE\b|\bN E\b/g, 'NE')
-                .replace(/\bNW\b|\bN W\b/g, 'NW')
-                .replace(/\bSE\b|\bS E\b/g, 'SE')
-                .replace(/\bSW\b|\bS W\b/g, 'SW')
-                .replace(/\s+/g, ' ')
-                .trim();
-        }
-
-        // Event listeners
-        document.addEventListener('click', function(e) {
-            if (!addressInput.contains(e.target) && !dropdown.contains(e.target)) {
-                dropdown.classList.remove('active');
-            }
-        });
-
-        addressInput.addEventListener('keypress', function(e) {
-            if (e.key === 'Enter' && !addressInput.disabled) {
-                dropdown.classList.remove('active');
-                searchWard();
-            }
-        });
-
-        // Initialize
-        console.log('Starting initialization...');
+        function normalizeKey(value) { return value.toUpperCase().trim().replace(/\./g, '').replace(/-/g, ' ').replace(/\//g, ' ').replace(/\s+/g, ' ').replace(/\bN\s*E\b/g, 'NE').replace(/\bN\s*W\b/g, 'NW').replace(/\bS\s*E\b/g, 'SE').replace(/\bS\s*W\b/g, 'SW'); }
+        document.addEventListener('click', function(e) { if (!addressInput.contains(e.target) && !dropdown.contains(e.target)) { dropdown.classList.remove('active'); } });
+        addressInput.addEventListener('keypress', function(e) { if (e.key === 'Enter' && !addressInput.disabled) { dropdown.classList.remove('active'); searchWard(); } });
         init();
     </script>
 </body>
