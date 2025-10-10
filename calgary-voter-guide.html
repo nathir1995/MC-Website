@@ -44,6 +44,11 @@
         .candidate-name:hover { color: #667eea; }
         .loading { text-align: center; padding: 40px; color: #999; }
         .spinner { border: 4px solid #f3f3f3; border-top: 4px solid #667eea; border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; margin: 0 auto 20px; }
+        /* Results grid */
+        .results-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; margin-top: 16px; }
+        .results-col { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px; }
+        .results-col h3 { font-size: 1.2rem; font-weight: 800; margin-bottom: 12px; display:flex; align-items:center; gap:8px; color:#111; }
+        .results-col .candidate-list { gap: 10px; }
         @keyframes fadeInDown { from { opacity: 0; transform: translateY(-30px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes fadeInUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes slideIn { from { opacity: 0; transform: translateX(-20px); } to { opacity: 1; transform: translateX(0); } }
@@ -319,39 +324,54 @@
         function displayResults(ward, options = {}) {
             hideLoading();
             dropdown.classList.remove('active');
-            const { mayors, councillors } = getCandidatesForWard(ward);
-            let html = `<div class="alert alert-success"><span>✅</span><span>Matched${options.community ? ` – ${options.community}` : ''}</span></div>`;
-            html += `<div class="ward-badge"><h2>Your Ward</h2><div class="ward-number">Ward ${ward}</div></div>`;
-            if (mayors.length > 0) {
-                html += `<div class="candidates-section"><h3 class="section-title"><span class="section-icon mayor-icon">👤</span>Mayor Candidates</h3><div class="candidate-list">`;
-                mayors.forEach(c => {
+            const { mayors, councillors, cbe, ccsd } = getCandidatesForWard(ward);
+            const header = `<div class="alert alert-success"><span>✅</span><span>Matched${options.community ? ` – ${options.community}` : ''}${options.note ? ` (${options.note})` : ''}</span></div>` +
+                           `<div class="ward-badge"><h2>Your Ward</h2><div class="ward-number">Ward ${ward}</div></div>`;
+
+            const col = (title, icon, list) => `
+              <div class="results-col">
+                <h3><span class="section-icon">${icon}</span>${title}</h3>
+                <div class="candidate-list">
+                  ${list.length ? list.map(c => {
                     const name = c.url ? `<a href="${c.url}" target="_blank" rel="noopener" class="candidate-name">${c.name}</a>` : `<span class="candidate-name">${c.name}</span>`;
-                    html += `<div class="candidate-card">${name}</div>`;
-                });
-                html += `</div></div>`;
-            }
-            if (councillors.length > 0) {
-                html += `<div class="candidates-section"><h3 class="section-title"><span class="section-icon councillor-icon">👥</span>Councillor Candidates (Ward ${ward})</h3><div class="candidate-list">`;
-                councillors.forEach(c => {
-                    const name = c.url ? `<a href="${c.url}" target="_blank" rel="noopener" class="candidate-name">${c.name}</a>` : `<span class="candidate-name">${c.name}</span>`;
-                    html += `<div class="candidate-card">${name}</div>`;
-                });
-                html += `</div></div>`;
-            }
-            if (mayors.length === 0 && councillors.length === 0) {
-                html += `<div class="alert alert-info"><span>ℹ️</span><span>No candidate data available</span></div>`;
-            }
-            document.getElementById('resultsContainer').innerHTML = html;
+                    return `<div class="candidate-card">${name}</div>`;
+                  }).join('') : '<div class="alert alert-info">No entries</div>'}
+                </div>
+              </div>`;
+
+            const grid = `
+              <div class="results-grid">
+                ${col('Mayor', '👤', mayors)}
+                ${col(`Councillor (Ward ${ward})`, '👥', councillors)}
+                ${col('CBE Trustees', '🏫', cbe)}
+                ${col('CCSD Trustees', '⛪', ccsd)}
+              </div>`;
+
+            document.getElementById('resultsContainer').innerHTML = header + grid;
         }
 
         function getCandidatesForWard(ward) {
             const wardStr = String(ward);
-            const empty = { mayors: [], councillors: [] };
+            const empty = { mayors: [], councillors: [], cbe: [], ccsd: [] };
             if (!Array.isArray(trackerCandidates)) return empty;
-            return {
-                mayors: trackerCandidates.filter(c => c.position === 'Mayor'),
-                councillors: trackerCandidates.filter(c => c.position === 'Councillor' && String(c.ward) === wardStr)
+            const mayors = trackerCandidates.filter(c => c.position === 'Mayor');
+            const councillors = trackerCandidates.filter(c => c.position === 'Councillor' && String(c.ward) === wardStr);
+            // Map ward number to board ward strings used in tracker data
+            const cbePairs = {
+              '1': ['1 & 2'], '2': ['1 & 2'], '3': ['3 & 4'], '4': ['3 & 4'],
+              '5': ['5 & 10'], '10': ['5 & 10'], '6': ['6 & 7'], '7': ['6 & 7'],
+              '8': ['8 & 9'], '9': ['8 & 9'], '11': ['11 & 13'], '13': ['11 & 13'],
+              '12': ['12 & 14'], '14': ['12 & 14']
             };
+            const ccsdPairs = {
+              '1': ['1, 2 & Cochrane'], '2': ['1, 2 & Cochrane'],
+              '4': ['4 & 7'], '7': ['4 & 7'], '6': ['6 & 8'], '8': ['6 & 8'],
+              '9': ['9 & 10'], '10': ['9 & 10'], '11': ['11 & 12'], '12': ['11 & 12'],
+              '13': ['13 & 14'], '14': ['13 & 14']
+            };
+            const cbe = trackerCandidates.filter(c => c.position === 'CBE Trustee' && (cbePairs[wardStr] || []).includes(String(c.ward)));
+            const ccsd = trackerCandidates.filter(c => c.position === 'CCSD Trustee' && (ccsdPairs[wardStr] || []).includes(String(c.ward)));
+            return { mayors, councillors, cbe, ccsd };
         }
 
         function showAlert(message, type) {
