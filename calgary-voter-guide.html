@@ -252,7 +252,7 @@
 
         function geocodeAddress(address) {
             showLoading();
-            geocoder.geocode({ address: address + ', Calgary, AB' }, (results, status) => {
+            geocoder.geocode({ address: address + ', Calgary, AB', region: 'ca' }, (results, status) => {
                 if (status === 'OK' && results && results.length) {
                     const best = results[0];
                     // Try dataset again using Google's normalized formatted_address
@@ -265,27 +265,16 @@
                     }
 
                     const community = getCommunityFromComponents(best.address_components || []);
-                    if (community) {
+                    if (community && !isGenericLocation(community)) {
                         lookupByCommunity(community, { source: 'Google Geocoding' });
-                    } else if (best.geometry && best.geometry.location) {
-                        // Reverse geocode fall-back path to search for neighborhood/sublocality
-                        geocoder.geocode({ location: best.geometry.location }, (revResults, revStatus) => {
-                            if (revStatus === 'OK' && revResults && revResults.length) {
-                                for (let i = 0; i < revResults.length; i++) {
-                                    const c = getCommunityFromComponents(revResults[i].address_components || []);
-                                    if (c) {
-                                        lookupByCommunity(c, { source: 'Google Geocoding (reverse)' });
-                                        return;
-                                    }
-                                }
-                            }
-                            showAlert('Could not determine community', 'error');
-                            hideLoading();
-                        });
-                    } else {
-                        showAlert('Could not determine community', 'error');
-                        hideLoading();
+                        return;
                     }
+                    if (best.geometry && best.geometry.location) {
+                        reverseGeocodeForCommunity(best.geometry.location, address);
+                        return;
+                    }
+                    showAlert('Could not determine community. Try a more complete street address.', 'error');
+                    hideLoading();
                 } else {
                     showAlert('Address not found', 'error');
                     hideLoading();
@@ -313,21 +302,25 @@
         }
 
         function isGenericLocation(name) {
-            const n = normalizeKey(name);
-            const generic = new Set([
+            if (!name) return true;
+            const normalized = normalizeKey(name);
+            const generic = [
                 'CALGARY',
-                'NORTH EAST','NORTHEAST','NE',
-                'NORTH WEST','NORTHWEST','NW',
-                'SOUTH EAST','SOUTHEAST','SE',
-                'SOUTH WEST','SOUTHWEST','SW',
-                'NORTHWEST CALGARY','NORTHEAST CALGARY','SOUTHEAST CALGARY','SOUTHWEST CALGARY',
-                'DOWNTOWN','INNER CITY'
-            ]);
-            return generic.has(n);
+                'NORTH EAST','NORTHEAST','NE','NORTHEAST CALGARY',
+                'NORTH WEST','NORTHWEST','NW','NORTHWEST CALGARY',
+                'SOUTH EAST','SOUTHEAST','SE','SOUTHEAST CALGARY',
+                'SOUTH WEST','SOUTHWEST','SW','SOUTHWEST CALGARY',
+                'DOWNTOWN','INNER CITY','DOWNTOWN CALGARY'
+            ];
+            return generic.some(g => normalized === g || normalized.includes(g + ' CALGARY'));
         }
 
         function findPartialCommunityMatch(searchKey) {
-            const key = normalizeKey(searchKey);
+            const key = normalizeKey(searchKey)
+                .replace(/\s(NE|NW|SE|SW)$/g, '')
+                .replace(/\sCALGARY$/g, '')
+                .trim();
+            if (key.length < 3) return null;
             const communities = Object.keys(wardIndex.community);
             for (const communityKey of communities) {
                 if (communityKey.includes(key) || key.includes(communityKey)) {
@@ -337,19 +330,40 @@
             return null;
         }
 
-        function reverseGeocodeWithPrecision(address) {
-            geocoder.geocode({ address: address + ', Calgary, AB', region: 'ca' }, (results, status) => {
-                if (status === 'OK' && results && results.length) {
-                    for (const result of results) {
-                        const components = result.address_components || [];
-                        const community = getCommunityFromComponents(components);
-                        if (community && !isGenericLocation(community)) {
-                            lookupByCommunityWithFallback(community, address);
+        function reverseGeocodeForCommunity(location, originalAddress) {
+            geocoder.geocode({ location, result_type: ['neighborhood','sublocality','sublocality_level_1','political'] }, (revResults, revStatus) => {
+                if (revStatus !== 'OK' || !revResults || !revResults.length) {
+                    showAlert('Could not determine community', 'error');
+                    hideLoading();
+                    return;
+                }
+                for (let i = 0; i < Math.min(revResults.length, 5); i++) {
+                    const result = revResults[i];
+                    if (addressIndexLoaded && result.formatted_address) {
+                        const fromDataset = addressIndex[normalizeAddress(result.formatted_address)];
+                        if (fromDataset) {
+                            lookupByCommunity(fromDataset, { source: 'Address dataset (reverse)' });
+                            return;
+                        }
+                    }
+                    const community = getCommunityFromComponents(result.address_components || []);
+                    if (community && !isGenericLocation(community)) {
+                        const key = normalizeKey(community);
+                        if (wardIndex.community[key]) {
+                            lookupByCommunity(community, { source: 'Google Geocoding (reverse)' });
                             return;
                         }
                     }
                 }
-                showAlert('Could not find a specific community for this address. Try a more complete street address.', 'error');
+                const lastAttempt = getCommunityFromComponents(revResults[0].address_components || []);
+                if (lastAttempt) {
+                    const fuzzyMatch = findPartialCommunityMatch(normalizeKey(lastAttempt));
+                    if (fuzzyMatch) {
+                        displayResults(fuzzyMatch.ward, { community: fuzzyMatch.name, note: 'Approximate match' });
+                        return;
+                    }
+                }
+                showAlert('Could not find a specific community for this address. Try entering the full street address with house number.', 'error');
                 hideLoading();
             });
         }
@@ -367,10 +381,10 @@
                 return;
             }
             if (originalAddress && geocoder) {
-                reverseGeocodeWithPrecision(originalAddress);
+                geocodeAddress(originalAddress);
                 return;
             }
-            showAlert(`Community "${community}" not mapped. Try entering a full street address instead of just a neighborhood name.`, 'error');
+            showAlert(`Community "${community}" not found in ward mapping. Please try entering your full street address with house number.`, 'error');
             hideLoading();
         }
 
