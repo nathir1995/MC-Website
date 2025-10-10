@@ -171,6 +171,17 @@
         addressInput.addEventListener('input', function(e) {
             clearTimeout(debounceTimer);
             const value = e.target.value.trim();
+
+            // If input was cleared, remove all results and suggestions
+            if (!value) {
+                dropdown.classList.remove('active');
+                dropdown.innerHTML = '';
+                const resultsEl = document.getElementById('resultsContainer');
+                const alertEl = document.getElementById('alertContainer');
+                if (resultsEl) resultsEl.innerHTML = '';
+                if (alertEl) alertEl.innerHTML = '';
+                return;
+            }
             const completePostalPattern = /^[A-Za-z]\d[A-Za-z][\s-]?\d[A-Za-z]\d$/;
             if (completePostalPattern.test(value)) {
                 dropdown.classList.remove('active');
