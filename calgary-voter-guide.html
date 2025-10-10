@@ -105,7 +105,7 @@
         // 🔑 REQUIRED: Get this from your Supabase project settings
         // Dashboard → Settings → API → Project API keys → anon/public key
         // ⚠️ IMPORTANT: Replace this with your actual anon key!
-        window.SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY_HERE';
+        window.SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY || 'YOUR_SUPABASE_ANON_KEY_HERE';
         
         // If anon key is not set, show warning
         if (!window.SUPABASE_ANON_KEY || window.SUPABASE_ANON_KEY === 'YOUR_SUPABASE_ANON_KEY_HERE') {
@@ -113,6 +113,14 @@
         }
         
         const SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY;
+
+        // Central configuration and feature flags
+        const CONFIG = {
+            supabase: { url: SUPABASE_URL, anonKey: SUPABASE_ANON_KEY },
+            // Optionally set this in a script tag before this file: window.GOOGLE_MAPS_API_KEY = '<your key>'
+            google: { apiKey: (window.GOOGLE_MAPS_API_KEY || '') },
+            features: { enableFallback: true, enableRetries: true }
+        };
         
         // ============================================
         // STATE MANAGEMENT
@@ -127,6 +135,8 @@
         let geocoder = null;
         let isCurrentlyGeocoding = false;
         let isInitialized = false;
+        let currentProvider = 'none'; // 'edge' | 'google' | 'none'
+        let googleSdkLoaded = false;
         
         const addressInput = document.getElementById('addressInput');
         const dropdown = document.getElementById('autocompleteDropdown');
@@ -172,7 +182,7 @@
                         }
                     }
                     
-                    const resp = await fetch(`${SUPABASE_URL}/functions/v1/geocode`, {
+                    const doFetch = () => fetch(`${SUPABASE_URL}/functions/v1/geocode`, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
@@ -181,6 +191,10 @@
                         },
                         body: JSON.stringify(body)
                     });
+
+                    const resp = CONFIG.features.enableRetries
+                        ? await withRetry(() => doFetch(), 2)
+                        : await doFetch();
                     
                     if (!resp.ok) {
                         throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
@@ -210,8 +224,7 @@
                         },
                         radius: 20000
                     } : undefined;
-                    
-                    const resp = await fetch(`${SUPABASE_URL}/functions/v1/places-autocomplete`, {
+                    const doFetch = () => fetch(`${SUPABASE_URL}/functions/v1/places-autocomplete`, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
@@ -224,6 +237,10 @@
                             bounds
                         })
                     });
+
+                    const resp = CONFIG.features.enableRetries
+                        ? await withRetry(() => doFetch(), 2)
+                        : await doFetch();
                     
                     if (!resp.ok) {
                         throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
@@ -242,9 +259,7 @@
                 }
             }
         };
-
-        geocoder = geocoderProxy;
-        autocompleteService = autocompleteProxy;
+        // Geocoding/Autocomplete provider is selected dynamically in initializeGeocoding()
         
         // ============================================
         // UTILITY FUNCTIONS
@@ -255,6 +270,77 @@
                 promise,
                 new Promise((_, reject) => setTimeout(() => reject(new Error('Request timeout')), timeoutMs))
             ]);
+        }
+
+        async function withRetry(fn, maxRetries = 2, baseDelayMs = 800) {
+            let attempt = 0;
+            // Always try at least once
+            for (;;) {
+                try {
+                    return await fn();
+                } catch (error) {
+                    if (attempt >= maxRetries) throw error;
+                    const delayMs = Math.min(baseDelayMs * Math.pow(2, attempt), 5000);
+                    await new Promise(res => setTimeout(res, delayMs));
+                    attempt++;
+                }
+            }
+        }
+
+        async function loadGoogleMapsIfNeeded(apiKey) {
+            if (googleSdkLoaded && window.google && window.google.maps) return true;
+            if (!apiKey) return false;
+            return new Promise(resolve => {
+                const existing = document.querySelector('script[data-id="google-maps-sdk"]');
+                if (existing) {
+                    existing.addEventListener('load', () => {
+                        googleSdkLoaded = true;
+                        resolve(!!(window.google && window.google.maps));
+                    });
+                    return;
+                }
+                const script = document.createElement('script');
+                script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(apiKey)}&libraries=places`;
+                script.async = true;
+                script.defer = true;
+                script.setAttribute('data-id', 'google-maps-sdk');
+                script.onload = () => {
+                    googleSdkLoaded = true;
+                    resolve(!!(window.google && window.google.maps));
+                };
+                script.onerror = () => resolve(false);
+                document.head.appendChild(script);
+            });
+        }
+
+        async function ensureGoogleProvider() {
+            if (currentProvider === 'google') return true;
+            if (!CONFIG.features.enableFallback) return false;
+            const ok = await loadGoogleMapsIfNeeded(CONFIG.google.apiKey);
+            if (!ok) return false;
+            try {
+                geocoder = new google.maps.Geocoder();
+                autocompleteService = new google.maps.places.AutocompleteService();
+                currentProvider = 'google';
+                showAlert('Switched to Google Maps fallback', 'info');
+                return true;
+            } catch (e) {
+                return false;
+            }
+        }
+
+        async function initializeGeocoding() {
+            // Prefer Edge Functions when configured
+            if (CONFIG.supabase.anonKey && CONFIG.supabase.anonKey !== 'YOUR_SUPABASE_ANON_KEY_HERE') {
+                geocoder = geocoderProxy;
+                autocompleteService = autocompleteProxy;
+                currentProvider = 'edge';
+            }
+            // If not configured or unavailable, try Google fallback lazily
+            if (!geocoder && CONFIG.google.apiKey) {
+                const ok = await ensureGoogleProvider();
+                if (!ok) console.warn('Google fallback not available; autocomplete/geocoding limited');
+            }
         }
         
         function getUserFriendlyError(status) {
@@ -360,10 +446,12 @@
         
         async function loadWardMapping() {
             try {
+                let filesLoaded = 0;
                 for (let i = 1; i <= 14; i++) {
                     try {
                         const r = await fetch(`assets/data/calgary/wards/ward-${i}.json`);
                         if (r.ok) {
+                            filesLoaded++;
                             const arr = await r.json();
                             arr.forEach(name => { wardIndex.community[normalizeKey(name)] = String(i); });
                         }
@@ -371,7 +459,13 @@
                         console.warn(`Ward ${i} not found`);
                     }
                 }
-                console.log('✅ Ward mapping loaded:', Object.keys(wardIndex.community).length, 'communities');
+                const communitiesCount = Object.keys(wardIndex.community).length;
+                console.log('✅ Ward mapping loaded:', communitiesCount, 'communities from', filesLoaded, 'files');
+                if (filesLoaded === 0 || communitiesCount === 0) {
+                    showAlert('Ward data unavailable. Search is disabled. Please try again later.', 'error');
+                    const btn = document.getElementById('searchBtn');
+                    if (btn) btn.disabled = true;
+                }
             } catch (e) {
                 console.error('❌ Failed to load wards:', e);
             }
@@ -452,7 +546,16 @@
                 const re = /const\s+candidates\s*=\s*\[(.*?)\];/s;
                 const m = re.exec(html);
                 if (!m) return;
-                trackerCandidates = Function('"use strict"; return [' + m[1] + '];')();
+                // Parse array in a controlled way; data is authored locally
+                const parsed = Function('"use strict"; return [' + m[1] + '];')();
+                // Sanitize to expected shape only
+                const safe = Array.isArray(parsed) ? parsed.map(item => ({
+                    position: String(item.position || ''),
+                    ward: item.ward !== undefined ? String(item.ward) : (item.ward || ''),
+                    name: String(item.name || ''),
+                    url: item.url ? String(item.url) : undefined
+                })).filter(c => c.name && c.position) : [];
+                trackerCandidates = safe;
                 console.log('✅ Loaded candidates:', trackerCandidates.length);
             } catch (e) {
                 console.error('Failed to load candidates:', e);
@@ -595,7 +698,7 @@
             geocodeAddress(address);
         }
 
-        function geocodeAddress(address) {
+        async function geocodeAddress(address) {
             if (isCurrentlyGeocoding) {
                 console.log('Already geocoding, skipping');
                 return;
@@ -653,14 +756,22 @@
                     showAlert('Could not determine community. Try a more complete street address.', 'error');
                     resetGeocodingState();
                 })
-                .catch((error) => {
+                .catch(async (error) => {
                     console.error('Geocoding error:', error);
-                    showAlert(getUserFriendlyError(error.message), 'error');
+                    // Attempt fallback to Google SDK if available and not already on Google
+                    const switched = await ensureGoogleProvider();
+                    if (switched) {
+                        // Retry once on Google
+                        isCurrentlyGeocoding = false;
+                        searchBtn.disabled = false;
+                        return geocodeAddress(address);
+                    }
+                    showAlert(getUserFriendlyError(error.message || 'ERROR'), 'error');
                     resetGeocodingState();
                 });
         }
 
-        function reverseGeocodeForCommunity(location) {
+        async function reverseGeocodeForCommunity(location) {
             console.log('🔄 Reverse geocoding...');
             
             const reversePromise = new Promise((resolve, reject) => {
@@ -728,9 +839,16 @@
                     showAlert('Could not find a specific community. Please try a nearby street address.', 'error');
                     resetGeocodingState();
                 })
-                .catch((error) => {
+                .catch(async (error) => {
                     console.error('Reverse geocoding error:', error);
-                    showAlert(getUserFriendlyError(error.message), 'error');
+                    const switched = await ensureGoogleProvider();
+                    if (switched) {
+                        // Retry once on Google
+                        isCurrentlyGeocoding = false;
+                        searchBtn.disabled = false;
+                        return reverseGeocodeForCommunity(location);
+                    }
+                    showAlert(getUserFriendlyError(error.message || 'ERROR'), 'error');
                     resetGeocodingState();
                 });
         }
@@ -1036,12 +1154,8 @@
         
         async function initialize() {
             console.log('🚀 Initializing Calgary Voter Guide...');
-            
-            if (!SUPABASE_ANON_KEY || SUPABASE_ANON_KEY === 'YOUR_SUPABASE_ANON_KEY_HERE') {
-                showAlert('⚠️ Configuration required. Please set your Supabase anon key in the code.', 'warning');
-                searchBtn.disabled = true;
-                return;
-            }
+            // Initialize provider selection (Edge if configured, otherwise Google if available)
+            await initializeGeocoding();
             
             await Promise.all([
                 loadWardMapping(),
@@ -1051,6 +1165,19 @@
             
             isInitialized = true;
             console.log('✅ Initialization complete');
+            
+            // Expose debug helpers
+            window.calgaryVoterGuide = {
+                status: () => ({
+                    provider: currentProvider,
+                    initialized: isInitialized,
+                    wards: Object.keys(wardIndex.community).length,
+                    addresses: Object.keys(addressIndex).length,
+                    candidates: Array.isArray(trackerCandidates) ? trackerCandidates.length : 0
+                }),
+                test: (addr) => { addressInput.value = addr; searchWard(); },
+                config: CONFIG
+            };
         }
         
         initialize();
