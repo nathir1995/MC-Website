@@ -83,6 +83,7 @@
         let wardIndex = { community: {} };
         let addressIndex = {}; // normalizedAddress -> community
         let addressIndexLoaded = false;
+        let addressDatasetRows = null; // cached rows for testing
         let trackerCandidates = null;
         let autocompleteService = null;
         let geocoder = null;
@@ -144,11 +145,109 @@
                     addressIndex = idx;
                     addressIndexLoaded = true;
                     console.log('Address index loaded:', count);
+                    addressDatasetRows = rows;
                 }
             } catch (e) {
                 console.warn('Failed to load address dataset', e);
             }
         }
+
+        // ---------- Test helpers (invoke from console) ----------
+        async function ensureMappingLoaded() {
+            if (Object.keys(wardIndex.community).length > 0) return;
+            await loadWardMapping();
+        }
+
+        async function ensureDatasetRowsLoaded() {
+            if (addressDatasetRows && Array.isArray(addressDatasetRows)) return;
+            await loadAddressDataset();
+        }
+
+        function sampleWardAddressesFromDataset(perWard = 2) {
+            const rows = addressDatasetRows || [];
+            if (!rows.length) return {};
+            const { addressKey, communityKey } = detectAddressJsonKeys(rows[0] || {});
+            const samples = {};
+            for (const row of rows) {
+                const addr = String(row[addressKey] ?? '').trim();
+                const community = String(row[communityKey] ?? '').trim();
+                const key = normalizeKey(community);
+                const ward = wardIndex.community[key];
+                if (!ward || !addr) continue;
+                const w = String(ward);
+                if (!samples[w]) samples[w] = [];
+                if (samples[w].length < perWard) samples[w].push(addr);
+                if (Object.keys(samples).length >= 14 && Object.values(samples).every(a => a.length >= perWard)) break;
+            }
+            return samples;
+        }
+
+        // Dataset-only verification (no Google API calls)
+        window.runWardTestsDataset = async function(perWard = 2) {
+            await ensureMappingLoaded();
+            await ensureDatasetRowsLoaded();
+            const samples = sampleWardAddressesFromDataset(perWard);
+            const results = [];
+            for (const [ward, addrs] of Object.entries(samples)) {
+                for (const addr of addrs) {
+                    const fromDataset = lookupInDataset(addr);
+                    const expected = ward;
+                    const foundWard = fromDataset ? wardIndex.community[normalizeKey(fromDataset)] : null;
+                    const ok = String(foundWard) === String(expected);
+                    results.push({ ward: expected, addr, community: fromDataset, foundWard, ok });
+                }
+            }
+            const pass = results.filter(r => r.ok).length;
+            const fail = results.length - pass;
+            console.table(results);
+            console.log(`Dataset tests: ${pass}/${results.length} passed, ${fail} failed`);
+            return { pass, fail, results };
+        };
+
+        // Geocode-based verification (calls Google; beware of quotas)
+        window.runWardTestsGeocode = async function(perWard = 1, delayMs = 1200) {
+            await ensureMappingLoaded();
+            await ensureDatasetRowsLoaded();
+            if (!geocoder) { console.warn('Geocoder not ready'); return; }
+            const samples = sampleWardAddressesFromDataset(perWard);
+            const results = [];
+
+            const geocodeOnce = (query) => withTimeout(new Promise((resolve, reject) => {
+                geocoder.geocode({ address: query + ', Calgary, AB', region: 'ca' }, (res, status) => {
+                    if (status === 'OK') resolve(res);
+                    else reject(new Error(status));
+                });
+            }), 8000);
+
+            for (const [ward, addrs] of Object.entries(samples)) {
+                for (const addr of addrs) {
+                    try {
+                        await new Promise(r => setTimeout(r, delayMs));
+                        const res = await geocodeOnce(addr);
+                        const best = res[0];
+                        let foundCommunity = null;
+                        // Try dataset variations on formatted address
+                        if (best && best.formatted_address) {
+                            const ds = lookupInDataset(best.formatted_address);
+                            if (ds) foundCommunity = ds;
+                        }
+                        if (!foundCommunity) {
+                            foundCommunity = getCommunityFromComponents((best && best.address_components) || []);
+                        }
+                        const foundWard = foundCommunity ? wardIndex.community[normalizeKey(foundCommunity)] : null;
+                        const ok = String(foundWard) === String(ward);
+                        results.push({ ward, addr, community: foundCommunity, foundWard, ok });
+                    } catch (e) {
+                        results.push({ ward, addr, error: e.message, ok: false });
+                    }
+                }
+            }
+            const pass = results.filter(r => r.ok).length;
+            const fail = results.length - pass;
+            console.table(results);
+            console.log(`Geocode tests: ${pass}/${results.length} passed, ${fail} failed`);
+            return { pass, fail, results };
+        };
 
         async function loadWardMapping() {
             try {
