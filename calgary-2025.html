@@ -771,7 +771,7 @@
 
       const byPos = (pos) => manualRankings
         .filter(r => r.position === pos)
-        .sort((a, b) => a.rank - b.rank)
+        .sort((a, b) => b.rank - a.rank)
         .map(r => {
           const found = candidates.find(c => c.name === r.name && (pos === 'Mayor' ? c.position === 'Mayor' : true));
           const wardInfo = found && found.ward ? ` (Ward ${found.ward})` : '';
