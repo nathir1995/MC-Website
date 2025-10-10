@@ -539,12 +539,33 @@
 
         addressInput.addEventListener('input', function(e) {
             clearTimeout(debounceTimer);
-            const value = e.target.value;
+            const value = e.target.value.trim();
+
+            // Check if complete postal code entered
+            const completePostalPattern = /^[A-Za-z]\d[A-Za-z][\s-]?\d[A-Za-z]\d$/;
+            if (completePostalPattern.test(value)) {
+                dropdown.classList.remove('active');
+                // Auto-search when complete postal code is entered
+                debounceTimer = setTimeout(() => {
+                    searchWard();
+                }, 500);
+                return;
+            }
+
+            // Don't autocomplete partial postal codes
+            const partialPostalPattern = /^[A-Za-z]\d[A-Za-z][\s-]?\d?[A-Za-z]?\d?$/;
+            if (partialPostalPattern.test(value)) {
+                dropdown.classList.remove('active');
+                dropdown.innerHTML = '';
+                return;
+            }
+
             if (!value || value.length < 3 || !autocompleteService) {
                 dropdown.classList.remove('active');
                 dropdown.innerHTML = '';
                 return;
             }
+
             debounceTimer = setTimeout(() => {
                 const bounds = new google.maps.LatLngBounds(
                     new google.maps.LatLng(50.8429, -114.3144),
