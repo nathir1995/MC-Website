@@ -122,33 +122,71 @@
         }
 
         async function loadAddressDataset() {
+            console.log('Starting to load address dataset...');
             try {
                 const url = 'https://ajgqyygtstihrwjovhes.supabase.co/storage/v1/object/public/YYC%20addresses/filtered_property_data.json';
-                const res = await fetch(url, { cache: 'no-store' });
-                if (!res.ok) return;
+                console.log('Fetching from:', url);
+
+                const res = await fetch(url, {
+                    cache: 'no-store',
+                    headers: { 'Accept': 'application/json' }
+                });
+
+                console.log('Fetch response status:', res.status, res.statusText);
+                if (!res.ok) {
+                    console.error('Failed to fetch dataset:', res.status, res.statusText);
+                    const text = await res.text();
+                    console.error('Response body:', (text || '').substring(0, 500));
+                    return;
+                }
+
+                const contentType = res.headers.get('content-type');
+                console.log('Content-Type:', contentType);
+
                 const json = await res.json();
+                console.log('JSON parsed, type:', typeof json, 'is array:', Array.isArray(json));
+
                 const rows = Array.isArray(json) ? json : (json && (json.rows || json.data)) || [];
-                if (!Array.isArray(rows)) return;
+                console.log('Rows extracted, count:', rows.length);
+                if (!Array.isArray(rows) || rows.length === 0) {
+                    console.error('No valid rows in dataset');
+                    return;
+                }
+
                 const sample = rows[0] || {};
+                console.log('Sample row:', sample);
                 const { addressKey, communityKey } = detectAddressJsonKeys(sample);
-                if (!addressKey || !communityKey) return;
+                console.log('Detected keys - address:', addressKey, 'community:', communityKey);
+                if (!addressKey || !communityKey) {
+                    console.error('Could not detect address/community keys');
+                    console.log('Available keys:', Object.keys(sample));
+                    return;
+                }
+
                 const idx = {};
                 let count = 0;
+                const sampleAddresses = [];
                 for (const row of rows) {
                     const addr = String(row[addressKey] ?? '').trim();
                     const community = String(row[communityKey] ?? '').trim();
                     if (!addr || !community) continue;
-                    idx[normalizeAddress(addr)] = community;
+                    const normalized = normalizeAddress(addr);
+                    idx[normalized] = community;
                     count++;
+                    if (sampleAddresses.length < 10) sampleAddresses.push({ original: addr, normalized, community });
                 }
                 if (count > 0) {
                     addressIndex = idx;
                     addressIndexLoaded = true;
-                    console.log('Address index loaded:', count);
                     addressDatasetRows = rows;
+                    console.log('✅ Address index loaded:', count, 'addresses');
+                    console.log('Sample normalized addresses:', sampleAddresses);
+                } else {
+                    console.error('❌ No addresses loaded from dataset');
                 }
             } catch (e) {
-                console.warn('Failed to load address dataset', e);
+                console.error('❌ Failed to load address dataset:', e);
+                console.error('Error stack:', e.stack);
             }
         }
 
@@ -696,8 +734,8 @@
                 .replace(/\bSOUTH\s*WEST\b/g, 'SW');
         }
 
-        function normalizeAddressVariations(value) {
-            const base = (value || '')
+        function normalizeAddress(value) {
+            return (value || '')
                 .toUpperCase()
                 .trim()
                 .replace(/,\s*CANADA$/i, '')
@@ -709,7 +747,21 @@
                 .replace(/\bNORTH[\s-]?EAST\b/g, 'NE')
                 .replace(/\bNORTH[\s-]?WEST\b/g, 'NW')
                 .replace(/\bSOUTH[\s-]?EAST\b/g, 'SE')
-                .replace(/\bSOUTH[\s-]?WEST\b/g, 'SW');
+                .replace(/\bSOUTH[\s-]?WEST\b/g, 'SW')
+                .replace(/\bSTREET\b/g, 'ST')
+                .replace(/\bAVENUE\b/g, 'AVE')
+                .replace(/\bROAD\b/g, 'RD')
+                .replace(/\bDRIVE\b/g, 'DR')
+                .replace(/\bCOURT\b/g, 'CT')
+                .replace(/\bCRESCENT\b/g, 'CRES')
+                .replace(/\bBOULEVARD\b/g, 'BLVD')
+                .replace(/\bPLACE\b/g, 'PL')
+                .replace(/\bWAY\b/g, 'WY')
+                .trim();
+        }
+
+        function normalizeAddressVariations(value) {
+            const base = normalizeAddress(value);
             const abbreviated = base
                 .replace(/\bSTREET\b/g, 'ST')
                 .replace(/\bAVENUE\b/g, 'AVE')
