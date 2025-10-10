@@ -94,13 +94,12 @@
         </div>
     </div>
 
-    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCUwE9QZHo61wVzuEyPLbRwGv2fUipWSg0&libraries=places&callback=initServices" async defer></script>
-    
     <script>
+        // Supabase configuration - NO AUTH, using anon key directly
+        const SUPABASE_URL = 'https://ajgqyygtstihrwjovhes.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFqZ3F5eWd0c3RpaHJ3am92aGVzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzM2MTk1NTUsImV4cCI6MjA0OTE5NTU1NX0.kxJPe63Wej0eqOZfB4x8bOGRPB2xWJ3_t7lRJJa9Ink';
+
         // State
-        let autocompleteService = null;
-        let geocoder = null;
-        let sessionToken = null;
         let wardIndex = { community: {} };
         let trackerCandidates = null;
         let debounceTimer;
@@ -110,34 +109,49 @@
         const dropdown = document.getElementById('autocompleteDropdown');
         const statusBadge = document.getElementById('statusBadge');
 
-        // Initialize Google Maps services
-        window.initServices = function() {
-            try {
-                autocompleteService = new google.maps.places.AutocompleteService();
-                geocoder = new google.maps.Geocoder();
-                sessionToken = new google.maps.places.AutocompleteSessionToken();
-                
-                updateStatus('ready', '✅ Ready');
-                addressInput.disabled = false;
-                searchBtn.disabled = false;
-                
-                loadWardCommunities();
-                loadTrackerCandidates();
-                
-                console.log('Google Maps initialized successfully');
-            } catch (e) {
-                console.error('Failed to initialize:', e);
-                updateStatus('error', '❌ Initialization failed');
-            }
-        };
+        // Initialize
+        async function init() {
+            updateStatus('ready', '✅ Ready');
+            addressInput.disabled = false;
+            searchBtn.disabled = false;
+            
+            await Promise.all([
+                loadWardCommunities(),
+                loadTrackerCandidates()
+            ]);
+        }
 
         function updateStatus(status, text) {
             statusBadge.className = `status-badge status-${status}`;
             statusBadge.textContent = text;
         }
 
+        // Call Supabase Edge Function proxy WITHOUT authentication
+        async function callGoogleMapsProxy(mode, query, country = 'ca') {
+            const url = new URL(`${SUPABASE_URL}/functions/v1/google-maps-proxy`);
+            url.searchParams.append('mode', mode);
+            url.searchParams.append('q', query);
+            url.searchParams.append('country', country);
+
+            const response = await fetch(url.toString(), {
+                method: 'GET',
+                headers: {
+                    'apikey': SUPABASE_ANON_KEY,
+                    'Accept': 'application/json'
+                }
+            });
+
+            if (!response.ok) {
+                const text = await response.text();
+                console.error('API Error:', response.status, text);
+                throw new Error(`API call failed: ${response.status}`);
+            }
+
+            return await response.json();
+        }
+
         // Autocomplete
-        addressInput.addEventListener('input', function(e) {
+        addressInput.addEventListener('input', async function(e) {
             clearTimeout(debounceTimer);
             const value = e.target.value.trim();
             
@@ -147,25 +161,14 @@
                 return;
             }
 
-            if (!autocompleteService) return;
-
-            debounceTimer = setTimeout(() => {
-                autocompleteService.getPlacePredictions({
-                    input: value,
-                    componentRestrictions: { country: 'ca' },
-                    sessionToken: sessionToken,
-                    types: ['address'],
-                    bounds: new google.maps.LatLngBounds(
-                        new google.maps.LatLng(50.8, -114.4),
-                        new google.maps.LatLng(51.3, -113.8)
-                    )
-                }, (predictions, status) => {
-                    if (status === google.maps.places.PlacesServiceStatus.OK) {
-                        displaySuggestions(predictions || []);
-                    } else {
-                        dropdown.classList.remove('active');
-                    }
-                });
+            debounceTimer = setTimeout(async () => {
+                try {
+                    const data = await callGoogleMapsProxy('autocomplete', value);
+                    displaySuggestions(data.predictions || []);
+                } catch (error) {
+                    console.error('Autocomplete error:', error);
+                    dropdown.classList.remove('active');
+                }
             }, 300);
         });
 
@@ -193,7 +196,7 @@
         }
 
         // Search
-        function searchWard() {
+        async function searchWard() {
             const address = addressInput.value.trim();
             
             if (!address) {
@@ -209,18 +212,14 @@
             geocodeAddress(address + ', Calgary, AB');
         }
 
-        function geocodeAddress(address) {
+        async function geocodeAddress(address) {
             showLoading();
             
-            if (!geocoder) {
-                showAlert('Maps not ready', 'error');
-                hideLoading();
-                return;
-            }
-
-            geocoder.geocode({ address: address }, (results, status) => {
-                if (status === 'OK' && results && results.length > 0) {
-                    const result = results[0];
+            try {
+                const data = await callGoogleMapsProxy('geocode', address);
+                
+                if (data.results && data.results.length > 0) {
+                    const result = data.results[0];
                     const community = getCommunityFromComponents(result.address_components || []);
                     
                     if (community) {
@@ -233,7 +232,11 @@
                     showAlert('Address not found', 'error');
                     hideLoading();
                 }
-            });
+            } catch (error) {
+                console.error('Geocoding error:', error);
+                showAlert(error.message || 'Failed to geocode address', 'error');
+                hideLoading();
+            }
         }
 
         function getCommunityFromComponents(components) {
@@ -403,6 +406,9 @@
                 searchWard();
             }
         });
+
+        // Initialize on load
+        init();
     </script>
 </body>
 </html>
