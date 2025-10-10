@@ -733,8 +733,60 @@
                     return addressIndex[variant];
                 }
             }
+            // Fallback: pattern matching by house and street number prefix
+            console.log('Exact match failed, trying pattern matching...');
+            const patternMatch = findAddressByPattern(address);
+            if (patternMatch) {
+                console.log('Found via pattern matching:', patternMatch);
+                return patternMatch;
+            }
             return null;
         }
+
+        function findAddressByPattern(address) {
+            if (!addressIndexLoaded) return null;
+            // Extract house number and street number (supports 17A, 38, etc.)
+            const match = (address || '').toUpperCase().match(/^(\d+)\s+(\d+[A-Z]?)\b/);
+            if (!match) return null;
+            const houseNum = match[1];
+            const streetNum = match[2];
+            console.log('Searching for pattern:', houseNum, streetNum);
+            const pattern = `${houseNum} ${streetNum}`.toUpperCase();
+            const keys = Object.keys(addressIndex);
+            const matches = keys.filter(k => k.startsWith(pattern));
+            console.log('Pattern matches:', matches.slice(0, 10), matches.length > 10 ? `(+${matches.length - 10} more)` : '');
+            if (matches.length > 0) {
+                return addressIndex[matches[0]];
+            }
+            return null;
+        }
+
+        // Debug helper to inspect dataset and test an address
+        function debugDatasetLookup(testAddress) {
+            console.log('Dataset loaded:', addressIndexLoaded);
+            console.log('Dataset size:', Object.keys(addressIndex).length);
+            const sampleKeys = Object.keys(addressIndex).slice(0, 20);
+            console.log('Sample addresses in dataset:', sampleKeys);
+            const addr = (testAddress || addressInput.value || '').trim();
+            console.log('\nTesting address:', addr);
+            const res = lookupInDataset(addr);
+            console.log('lookupInDataset ->', res || 'NOT FOUND');
+            const tests = [
+                '2519 38 STREET NORTHEAST CALGARY',
+                '2519 38 STREET NE CALGARY',
+                '2519 38 ST NE CALGARY',
+                '2519 38 STREET NE',
+                '2519 38 ST NORTHEAST'
+            ];
+            tests.forEach(t => {
+                const key = t.toUpperCase();
+                const out = addressIndex[key];
+                console.log(key, '→', out || 'NOT FOUND');
+            });
+        }
+        // Expose debug helpers
+        window.debugDatasetLookup = debugDatasetLookup;
+        window.findAddressByPattern = findAddressByPattern;
 
         function detectAddressJsonKeys(sample) {
             const keys = Object.keys(sample || {});
