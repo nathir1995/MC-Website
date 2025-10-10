@@ -249,9 +249,34 @@
             showLoading();
             geocoder.geocode({ address: address + ', Calgary, AB' }, (results, status) => {
                 if (status === 'OK' && results && results.length) {
-                    const community = getCommunityFromComponents(results[0].address_components || []);
+                    const best = results[0];
+                    // Try dataset again using Google's normalized formatted_address
+                    if (addressIndexLoaded && best && best.formatted_address) {
+                        const fromDataset = addressIndex[normalizeAddress(best.formatted_address)];
+                        if (fromDataset) {
+                            lookupByCommunity(fromDataset, { source: 'Address dataset' });
+                            return;
+                        }
+                    }
+
+                    const community = getCommunityFromComponents(best.address_components || []);
                     if (community) {
-                        lookupByCommunity(community);
+                        lookupByCommunity(community, { source: 'Google Geocoding' });
+                    } else if (best.geometry && best.geometry.location) {
+                        // Reverse geocode fall-back path to search for neighborhood/sublocality
+                        geocoder.geocode({ location: best.geometry.location }, (revResults, revStatus) => {
+                            if (revStatus === 'OK' && revResults && revResults.length) {
+                                for (let i = 0; i < revResults.length; i++) {
+                                    const c = getCommunityFromComponents(revResults[i].address_components || []);
+                                    if (c) {
+                                        lookupByCommunity(c, { source: 'Google Geocoding (reverse)' });
+                                        return;
+                                    }
+                                }
+                            }
+                            showAlert('Could not determine community', 'error');
+                            hideLoading();
+                        });
                     } else {
                         showAlert('Could not determine community', 'error');
                         hideLoading();
