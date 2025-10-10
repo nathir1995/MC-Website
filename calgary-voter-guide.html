@@ -79,7 +79,9 @@
         </div>
     </div>
     <script>
-        const GOOGLE_MAPS_API_KEY = 'AIzaSyDrt3pufqoeYZlipaTBmYPvpBMSRwwdg9s';
+        // Supabase proxy configuration (set anon key at runtime for security)
+        const SUPABASE_URL = 'https://ajgqyygtstihrwjovhes.supabase.co';
+        const SUPABASE_ANON_KEY = (window.SUPABASE_ANON_KEY || '');
         let wardIndex = { community: {} };
         let addressIndex = {}; // normalizedAddress -> community
         let addressIndexLoaded = false;
@@ -93,25 +95,80 @@
         const dropdown = document.getElementById('autocompleteDropdown');
         let debounceTimer;
 
-        function initGoogleMaps() {
-            const script = document.createElement('script');
-            script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places&callback=initServices`;
-            script.async = true;
-            script.defer = true;
-            script.onerror = () => {
-                showAlert('Failed to load Google Maps. Check API key and referrer restrictions.', 'error');
-                console.error('Google Maps JS failed to load');
-            };
-            document.head.appendChild(script);
-        }
+        // Proxy services using Supabase Edge Functions
+        const geocoderProxy = {
+            geocode: async function(request, callback) {
+                try {
+                    const body = {
+                        address: request.address,
+                        region: request.region,
+                    };
+                    if (request.location) {
+                        const lat = typeof request.location.lat === 'function' ? request.location.lat() : (request.location.lat || request.location.latitude);
+                        const lng = typeof request.location.lng === 'function' ? request.location.lng() : (request.location.lng || request.location.longitude);
+                        if (typeof lat === 'number' && typeof lng === 'number') {
+                            body['latlng'] = { lat, lng };
+                        }
+                    }
+                    const resp = await fetch(`${SUPABASE_URL}/functions/v1/geocode`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            ...(SUPABASE_ANON_KEY ? { 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` } : {})
+                        },
+                        body: JSON.stringify(body)
+                    });
+                    const data = await resp.json();
+                    if (data.status === 'OK') {
+                        callback(data.results, 'OK');
+                    } else {
+                        callback(null, data.status || 'ERROR');
+                    }
+                } catch (err) {
+                    console.error('Geocoder proxy error:', err);
+                    callback(null, 'ERROR');
+                }
+            }
+        };
 
-        function initServices() {
-            autocompleteService = new google.maps.places.AutocompleteService();
-            geocoder = new google.maps.Geocoder();
-            console.log('Google Maps initialized');
-        }
-        // Ensure callback is globally accessible
-        window.initServices = initServices;
+        const autocompleteProxy = {
+            getPlacePredictions: async function(request, callback) {
+                try {
+                    const bounds = request.bounds ? {
+                        center: {
+                            lat: (request.bounds.getNorthEast().lat() + request.bounds.getSouthWest().lat()) / 2,
+                            lng: (request.bounds.getNorthEast().lng() + request.bounds.getSouthWest().lng()) / 2
+                        },
+                        radius: 20000
+                    } : undefined;
+                    const resp = await fetch(`${SUPABASE_URL}/functions/v1/places-autocomplete`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            ...(SUPABASE_ANON_KEY ? { 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` } : {})
+                        },
+                        body: JSON.stringify({
+                            input: request.input,
+                            components: request.componentRestrictions ? `country:${request.componentRestrictions.country}` : undefined,
+                            bounds
+                        })
+                    });
+                    const data = await resp.json();
+                    if (data.status === 'OK') {
+                        callback(data.predictions, 'OK');
+                    } else {
+                        callback(null, data.status || 'ERROR');
+                    }
+                } catch (err) {
+                    console.error('Autocomplete proxy error:', err);
+                    callback(null, 'ERROR');
+                }
+            }
+        };
+
+        // Use proxies by default (no Google JS SDK required)
+        geocoder = geocoderProxy;
+        autocompleteService = autocompleteProxy;
 
         // Timeout helper to prevent infinite loading states
         function withTimeout(promise, timeoutMs = 10000) {
@@ -347,10 +404,11 @@
                 return;
             }
             debounceTimer = setTimeout(() => {
-                const bounds = new google.maps.LatLngBounds(
-                    new google.maps.LatLng(50.8429, -114.3144),
-                    new google.maps.LatLng(51.2139, -113.8668)
-                );
+                // Provide a simple bounds-like object for the proxy
+                const bounds = {
+                    getNorthEast: () => ({ lat: () => 51.2139, lng: () => -113.8668 }),
+                    getSouthWest: () => ({ lat: () => 50.8429, lng: () => -114.3144 })
+                };
                 autocompleteService.getPlacePredictions({
                     input: value,
                     componentRestrictions: { country: 'ca' },
@@ -361,11 +419,9 @@
 
         function displaySuggestions(predictions, status) {
             dropdown.innerHTML = '';
-            const ok = (google.maps.places.PlacesServiceStatus && google.maps.places.PlacesServiceStatus.OK)
-              || (google.maps.places.AutocompleteServiceStatus && google.maps.places.AutocompleteServiceStatus.OK);
-            if (status !== ok || !predictions || predictions.length === 0) {
+            if (status !== 'OK' || !predictions || predictions.length === 0) {
                 dropdown.classList.remove('active');
-                if (typeof status === 'string' && status !== ok) {
+                if (typeof status === 'string' && status !== 'OK') {
                     // Surface common misconfigurations for easier debugging
                     if (status === 'REQUEST_DENIED') {
                         showAlert('Autocomplete request denied. Ensure Places API is enabled and referrer/domain is allowed.', 'error');
