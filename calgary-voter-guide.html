@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Calgary Voter Guide - Find Your Ward & Candidates</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/supabase/2.39.0/supabase.min.js"></script>
     
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -29,11 +28,11 @@
         .search-btn { width: 100%; padding: 18px; font-size: 1.2rem; font-weight: 700; color: white; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none; border-radius: 16px; cursor: pointer; transition: all 0.3s ease; box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4); }
         .search-btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6); }
         .search-btn:disabled { opacity: 0.6; cursor: not-allowed; }
-        .alert { padding: 16px 20px; border-radius: 12px; margin-bottom: 20px; display: flex; align-items: center; gap: 12px; }
+        .alert { padding: 16px 20px; border-radius: 12px; margin-bottom: 20px; display: flex; align-items: center; gap: 12px; animation: slideIn 0.4s ease; }
         .alert-error { background: #fee; border: 2px solid #fcc; color: #c33; }
         .alert-success { background: #efe; border: 2px solid #cfc; color: #3c3; }
         .alert-info { background: #eef; border: 2px solid #ccf; color: #33c; }
-        .ward-badge { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 20px; text-align: center; margin-bottom: 30px; box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3); }
+        .ward-badge { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 20px; text-align: center; margin-bottom: 30px; box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3); animation: scaleIn 0.5s ease; }
         .ward-badge h2 { font-size: 1.5rem; margin-bottom: 10px; opacity: 0.9; }
         .ward-badge .ward-number { font-size: 4rem; font-weight: 900; text-shadow: 2px 2px 4px rgba(0,0,0,0.2); }
         .candidates-section { margin-bottom: 30px; }
@@ -42,9 +41,10 @@
         .mayor-icon { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
         .councillor-icon { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
         .candidate-list { display: flex; flex-direction: column; gap: 15px; }
-        .candidate-card { background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); padding: 20px 25px; border-radius: 16px; display: flex; align-items: center; gap: 20px; transition: all 0.3s ease; border: 2px solid transparent; }
+        .candidate-card { background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); padding: 20px 25px; border-radius: 16px; display: flex; align-items: center; gap: 20px; transition: all 0.3s ease; border: 2px solid transparent; animation: slideInRight 0.5s ease; }
         .candidate-card:hover { transform: translateX(8px); border-color: #667eea; box-shadow: 0 8px 20px rgba(0,0,0,0.1); }
         .candidate-name { font-size: 1.3rem; font-weight: 600; color: #333; text-decoration: none; }
+        .candidate-name:hover { color: #667eea; }
         .loading { text-align: center; padding: 40px; color: #999; }
         .spinner { border: 4px solid #f3f3f3; border-top: 4px solid #667eea; border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; margin: 0 auto 20px; }
         .info-note { background: #f8f9fa; padding: 16px; border-radius: 12px; border: 2px dashed #ddd; color: #555; margin-bottom: 20px; }
@@ -52,9 +52,16 @@
         .status-loading { background: #fef3c7; color: #92400e; }
         .status-ready { background: #d1fae5; color: #065f46; }
         .status-error { background: #fee2e2; color: #991b1b; }
-        .auth-prompt { background: #fef3c7; border: 2px solid #fbbf24; padding: 20px; border-radius: 16px; margin-bottom: 20px; text-align: center; }
-        .auth-btn { display: inline-block; padding: 12px 24px; background: #3b82f6; color: white; border-radius: 12px; text-decoration: none; font-weight: 600; margin-top: 10px; }
-        @keyframes spin { 0% { transform: rotate(0deg);} 100% { transform: rotate(360deg);} }
+        @keyframes slideIn { from { opacity: 0; transform: translateX(-20px); } to { opacity: 1; transform: translateX(0); } }
+        @keyframes slideInRight { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
+        @keyframes scaleIn { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        @media (max-width: 768px) { 
+            .header h1 { font-size: 2rem; } 
+            .main-card { padding: 25px; } 
+            .ward-badge .ward-number { font-size: 3rem; } 
+            .section-title { font-size: 1.4rem; }
+        }
     </style>
 </head>
 <body>
@@ -65,46 +72,36 @@
         </div>
 
         <div class="main-card">
-            <div id="authPrompt" class="auth-prompt" style="display:none;">
-                <h3>🔒 Authentication Required</h3>
-                <p>Please sign in to use the voter guide.</p>
-                <a href="/login.html" class="auth-btn">Sign In</a>
+            <div class="info-note">
+                <div id="statusBadge" class="status-badge status-loading">⏳ Initializing...</div>
+                <div>Enter your address to find your Calgary ward.</div>
             </div>
 
-            <div id="mainContent">
-                <div class="info-note">
-                    <div id="statusBadge" class="status-badge status-loading">⏳ Initializing...</div>
-                    <div>Enter your address to find your Calgary ward.</div>
-                </div>
-
-                <div class="search-section">
-                    <div class="input-group">
-                        <label for="addressInput">Enter Your Address</label>
-                        <div class="address-input-wrapper">
-                            <input type="text" id="addressInput" placeholder="123 Main St SW, Calgary" autocomplete="off" disabled>
-                            <span class="input-icon">📍</span>
-                            <div id="autocompleteDropdown" class="autocomplete-dropdown"></div>
-                        </div>
+            <div class="search-section">
+                <div class="input-group">
+                    <label for="addressInput">Enter Your Address</label>
+                    <div class="address-input-wrapper">
+                        <input type="text" id="addressInput" placeholder="123 Main St SW, Calgary" autocomplete="off" disabled>
+                        <span class="input-icon">📍</span>
+                        <div id="autocompleteDropdown" class="autocomplete-dropdown"></div>
                     </div>
-                    <button class="search-btn" onclick="searchWard()" disabled id="searchBtn">🔍 Find My Ward & Candidates</button>
                 </div>
-
-                <div id="alertContainer"></div>
-                <div id="resultsContainer"></div>
+                <button class="search-btn" onclick="searchWard()" disabled id="searchBtn">🔍 Find My Ward & Candidates</button>
             </div>
+
+            <div id="alertContainer"></div>
+            <div id="resultsContainer"></div>
         </div>
     </div>
 
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCUwE9QZHo61wVzuEyPLbRwGv2fUipWSg0&libraries=places&callback=initServices" async defer></script>
+    
     <script>
-        // Supabase configuration
-        const SUPABASE_URL = 'https://ajgqyygtstihrwjovhes.supabase.co';
-        const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY'; // Replace with your actual anon key
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
         // State
-        let currentUser = null;
-        let userToken = null;
-        let wardIndex = { community: {}, postal: {}, fsa: {} };
+        let autocompleteService = null;
+        let geocoder = null;
+        let sessionToken = null;
+        let wardIndex = { community: {} };
         let trackerCandidates = null;
         let debounceTimer;
 
@@ -112,78 +109,35 @@
         const searchBtn = document.getElementById('searchBtn');
         const dropdown = document.getElementById('autocompleteDropdown');
         const statusBadge = document.getElementById('statusBadge');
-        const authPrompt = document.getElementById('authPrompt');
-        const mainContent = document.getElementById('mainContent');
 
-        // Initialize
-        async function init() {
-            // Check authentication
-            const { data: { session } } = await supabase.auth.getSession();
-            
-            if (!session || !session.user) {
-                updateStatus('error', '🔒 Authentication required');
-                authPrompt.style.display = 'block';
-                mainContent.style.display = 'none';
-                return;
+        // Initialize Google Maps services
+        window.initServices = function() {
+            try {
+                autocompleteService = new google.maps.places.AutocompleteService();
+                geocoder = new google.maps.Geocoder();
+                sessionToken = new google.maps.places.AutocompleteSessionToken();
+                
+                updateStatus('ready', '✅ Ready');
+                addressInput.disabled = false;
+                searchBtn.disabled = false;
+                
+                loadWardCommunities();
+                loadTrackerCandidates();
+                
+                console.log('Google Maps initialized successfully');
+            } catch (e) {
+                console.error('Failed to initialize:', e);
+                updateStatus('error', '❌ Initialization failed');
             }
-
-            currentUser = session.user;
-            userToken = session.access_token;
-            updateStatus('ready', '✅ Ready');
-            
-            // Enable inputs
-            addressInput.disabled = false;
-            searchBtn.disabled = false;
-
-            // Load data
-            await Promise.all([
-                loadWardCommunities(),
-                loadTrackerCandidates()
-            ]);
-        }
+        };
 
         function updateStatus(status, text) {
             statusBadge.className = `status-badge status-${status}`;
             statusBadge.textContent = text;
         }
 
-        // Call Supabase Edge Function proxy
-        async function callGoogleMapsProxy(mode, query, country = 'ca') {
-            if (!userToken) {
-                throw new Error('Not authenticated');
-            }
-
-            const url = new URL(`${SUPABASE_URL}/functions/v1/google-maps-proxy`);
-            url.searchParams.append('mode', mode);
-            url.searchParams.append('q', query);
-            url.searchParams.append('country', country);
-
-            const response = await fetch(url.toString(), {
-                method: 'GET',
-                headers: {
-                    'Authorization': `Bearer ${userToken}`,
-                    'apikey': SUPABASE_ANON_KEY,
-                    'Accept': 'application/json'
-                }
-            });
-
-            if (response.status === 401) {
-                // Session expired
-                authPrompt.style.display = 'block';
-                mainContent.style.display = 'none';
-                throw new Error('Session expired. Please sign in again.');
-            }
-
-            if (!response.ok) {
-                const text = await response.text();
-                throw new Error(`API call failed: ${response.status} - ${text}`);
-            }
-
-            return await response.json();
-        }
-
         // Autocomplete
-        addressInput.addEventListener('input', async function(e) {
+        addressInput.addEventListener('input', function(e) {
             clearTimeout(debounceTimer);
             const value = e.target.value.trim();
             
@@ -193,14 +147,25 @@
                 return;
             }
 
-            debounceTimer = setTimeout(async () => {
-                try {
-                    const data = await callGoogleMapsProxy('autocomplete', value);
-                    displaySuggestions(data.predictions || []);
-                } catch (error) {
-                    console.error('Autocomplete error:', error);
-                    dropdown.classList.remove('active');
-                }
+            if (!autocompleteService) return;
+
+            debounceTimer = setTimeout(() => {
+                autocompleteService.getPlacePredictions({
+                    input: value,
+                    componentRestrictions: { country: 'ca' },
+                    sessionToken: sessionToken,
+                    types: ['address'],
+                    bounds: new google.maps.LatLngBounds(
+                        new google.maps.LatLng(50.8, -114.4),
+                        new google.maps.LatLng(51.3, -113.8)
+                    )
+                }, (predictions, status) => {
+                    if (status === google.maps.places.PlacesServiceStatus.OK) {
+                        displaySuggestions(predictions || []);
+                    } else {
+                        dropdown.classList.remove('active');
+                    }
+                });
             }, 300);
         });
 
@@ -228,7 +193,7 @@
         }
 
         // Search
-        async function searchWard() {
+        function searchWard() {
             const address = addressInput.value.trim();
             
             if (!address) {
@@ -237,38 +202,38 @@
             }
 
             if (Object.keys(wardIndex.community).length === 0) {
-                showAlert('Ward mapping not loaded. Please wait and try again.', 'info');
+                showAlert('Ward mapping not loaded yet', 'info');
                 return;
             }
 
             geocodeAddress(address + ', Calgary, AB');
         }
 
-        async function geocodeAddress(address) {
+        function geocodeAddress(address) {
             showLoading();
             
-            try {
-                const data = await callGoogleMapsProxy('geocode', address);
-                
-                if (data.results && data.results.length > 0) {
-                    const result = data.results[0];
+            if (!geocoder) {
+                showAlert('Maps not ready', 'error');
+                hideLoading();
+                return;
+            }
+
+            geocoder.geocode({ address: address }, (results, status) => {
+                if (status === 'OK' && results && results.length > 0) {
+                    const result = results[0];
                     const community = getCommunityFromComponents(result.address_components || []);
                     
                     if (community) {
                         lookupByCommunity(community);
                     } else {
-                        showAlert('Could not determine community from address', 'error');
+                        showAlert('Could not determine community', 'error');
                         hideLoading();
                     }
                 } else {
-                    showAlert('Address not found. Please try a different address.', 'error');
+                    showAlert('Address not found', 'error');
                     hideLoading();
                 }
-            } catch (error) {
-                console.error('Geocoding error:', error);
-                showAlert(error.message || 'Failed to geocode address. Please try again.', 'error');
-                hideLoading();
-            }
+            });
         }
 
         function getCommunityFromComponents(components) {
@@ -303,7 +268,7 @@
             if (ward) {
                 displayResults(ward, { source: 'Community match', community });
             } else {
-                showAlert(`Community "${community}" not found in database`, 'error');
+                showAlert(`Community "${community}" not found`, 'error');
                 hideLoading();
             }
         }
@@ -328,7 +293,7 @@
             }
             
             if (mayors.length === 0 && councillors.length === 0) {
-                html += `<div class="alert alert-info"><span>ℹ️</span><span>Candidate data not available yet.</span></div>`;
+                html += `<div class="alert alert-info"><span>ℹ️</span><span>Candidate data not available</span></div>`;
             }
             
             document.getElementById('resultsContainer').innerHTML = html;
@@ -341,7 +306,7 @@
                 </h3>
                 <div class="candidate-list">`;
             
-            candidates.forEach((candidate, idx) => {
+            candidates.forEach(candidate => {
                 const name = candidate.url ? 
                     `<a href="${candidate.url}" target="_blank" rel="noopener" class="candidate-name">${candidate.name}</a>` : 
                     `<span class="candidate-name">${candidate.name}</span>`;
@@ -353,7 +318,7 @@
             return html;
         }
 
-        // Load data functions
+        // Load data
         async function loadWardCommunities() {
             try {
                 const res = await fetch('assets/data/calgary/ward-communities.json');
@@ -364,7 +329,7 @@
                             wardIndex.community[normalizeKey(comm)] = ward;
                         });
                     });
-                    console.log('Ward mapping loaded:', Object.keys(wardIndex.community).length, 'communities');
+                    console.log('Ward mapping loaded:', Object.keys(wardIndex.community).length);
                 }
             } catch (e) {
                 console.error('Failed to load ward mapping:', e);
@@ -397,7 +362,7 @@
             };
         }
 
-        // Utility functions
+        // Utilities
         function showAlert(message, type) {
             const alertContainer = document.getElementById('alertContainer');
             const icons = { error: '❌', success: '✅', info: 'ℹ️' };
@@ -438,9 +403,6 @@
                 searchWard();
             }
         });
-
-        // Initialize on load
-        init();
     </script>
 </body>
 </html>
