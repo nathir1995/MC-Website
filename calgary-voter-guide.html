@@ -430,13 +430,6 @@
         </div>
 
         <div class="main-card">
-            <div class="data-status">
-                <div>
-                    <label for="wardFile" class="upload-btn">Upload Ward Mapping CSV</label>
-                    <input type="file" id="wardFile" class="file-input" accept=".csv">
-                    <span id="wardFileName" class="file-name"></span>
-                </div>
-            </div>
 
             <div class="search-section">
                 <div class="input-group">
@@ -484,52 +477,40 @@
             placesService = new google.maps.places.PlacesService(mapDiv);
         }
 
-        const wardFileInput = document.getElementById('wardFile');
-        const wardFileNameSpan = document.getElementById('wardFileName');
-        wardFileInput.addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            if (file) {
-                wardFileNameSpan.textContent = file.name;
-                Papa.parse(file, {
-                    header: true,
-                    skipEmptyLines: true,
-                    complete: function(results) {
-                        wardIndex = { community: {}, postal: {}, fsa: {} };
-                        let communityCount = 0;
-                        let postalCount = 0;
-                        let fsaCount = 0;
-                        results.data.forEach(row => {
-                            const wardRaw = (row.Ward || row.WARD || row['Ward Number'] || row['Ward #'] || row['WARD_NUMBER'] || '').toString().trim();
-                            if (!wardRaw) return;
-                            const ward = wardRaw.replace(/^(Ward\s*)/i, '').trim();
-
-                            const communityRaw = (row.Community || row.COMMUNITY || row['Community Name'] || row['Neighbourhood'] || row.Neighborhood || '').toString().trim();
-                            if (communityRaw) {
-                                wardIndex.community[normalizeKey(communityRaw)] = ward;
-                                communityCount++;
-                            }
-
-                            const postalRaw = (row.Postal || row['Postal Code'] || row.PostalCode || row['POSTAL_CODE'] || '').toString().trim();
-                            if (postalRaw) {
-                                const postal = postalRaw.toUpperCase().replace(/\s+/g, '');
-                                wardIndex.postal[postal] = ward;
-                                postalCount++;
-                            }
-
-                            const fsaRaw = (row.FSA || row.Prefix || row['Postal Prefix'] || '').toString().trim();
-                            if (fsaRaw) {
-                                const fsa = fsaRaw.toUpperCase().replace(/\s+/g, '').slice(0, 3);
-                                if (fsa.length === 3) {
-                                    wardIndex.fsa[fsa] = ward;
-                                    fsaCount++;
-                                }
-                            }
+        // Load ward mapping from static ward-specific JSON files
+        async function loadWardMapping() {
+            try {
+                const wardNumbers = Array.from({ length: 14 }, (_, i) => i + 1);
+                const lists = await Promise.all(
+                    wardNumbers.map(async (n) => {
+                        try {
+                            const r = await fetch(`/assets/data/calgary/wards/ward-${n}.json`);
+                            if (!r.ok) return null;
+                            return await r.json();
+                        } catch {
+                            return null;
+                        }
+                    })
+                );
+                const newIndex = { community: {}, postal: {}, fsa: {} };
+                let total = 0;
+                lists.forEach((arr, idx) => {
+                    if (Array.isArray(arr)) {
+                        const wardStr = String(wardNumbers[idx]);
+                        arr.forEach((comm) => {
+                            newIndex.community[normalizeKey(comm)] = wardStr;
+                            total += 1;
                         });
-                        showAlert(`Ward mapping loaded: ${communityCount} communities, ${postalCount} postal codes, ${fsaCount} FSAs`, 'success');
                     }
                 });
+                wardIndex = newIndex;
+                if (total > 0) {
+                    showAlert(`Ward mapping loaded: ${total} communities`, 'success');
+                }
+            } catch (e) {
+                // silently fail; search will warn if mapping is missing
             }
-        });
+        }
 
         // Candidate CSV upload removed from UI; associated handlers removed
 
@@ -626,8 +607,8 @@
                 showAlert('Please enter an address or postal code', 'error');
                 return;
             }
-            if (Object.keys(wardIndex.community).length === 0 && Object.keys(wardIndex.postal).length === 0 && Object.keys(wardIndex.fsa).length === 0) {
-                showAlert('Please upload the ward mapping CSV file first', 'error');
+            if (Object.keys(wardIndex.community).length === 0) {
+                showAlert('Ward mapping not loaded yet. Please try again.', 'info');
                 return;
             }
             const postalCodePattern = /^[A-Za-z]\d[A-Za-z][\s-]?\d[A-Za-z]\d$/;
@@ -833,6 +814,7 @@
         }
 
         initGoogleMaps();
+        loadWardMapping();
 
         document.addEventListener('click', function(e) {
             if (!addressInput.contains(e.target) && !dropdown.contains(e.target)) {
