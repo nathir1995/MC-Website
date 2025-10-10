@@ -264,14 +264,12 @@
             console.log('Starting search for:', address);
             console.log('Dataset loaded:', addressIndexLoaded);
             console.log('Ward communities loaded:', Object.keys(wardIndex.community).length);
-            // Dataset first
-            if (addressIndexLoaded) {
-                const fromDataset = addressIndex[normalizeAddress(address)];
-                if (fromDataset) {
-                    console.log('Found in dataset immediately:', fromDataset);
-                    lookupByCommunity(fromDataset, { source: 'Address dataset' });
-                    return;
-                }
+            // Dataset first with multiple normalization variants
+            const fromDataset = lookupInDataset(address);
+            if (fromDataset) {
+                console.log('Found in dataset immediately:', fromDataset);
+                lookupByCommunity(fromDataset, { source: 'Address dataset' });
+                return;
             }
             geocodeAddress(address);
         }
@@ -295,10 +293,8 @@
                     if (!results || !results.length) { showAlert('Address not found', 'error'); hideLoading(); isCurrentlyGeocoding = false; return; }
                     const best = results[0];
                     console.log('Geocode result:', best);
-                    if (addressIndexLoaded && best.formatted_address) {
-                        const normalized = normalizeAddress(best.formatted_address);
-                        console.log('Trying dataset lookup:', normalized);
-                        const fromDataset = addressIndex[normalized];
+                    if (best.formatted_address) {
+                        const fromDataset = lookupInDataset(best.formatted_address);
                         if (fromDataset) { console.log('Found in dataset:', fromDataset); isCurrentlyGeocoding = false; lookupByCommunity(fromDataset, { source: 'Address dataset' }); return; }
                     }
                     const community = getCommunityFromComponents(best.address_components || []);
@@ -312,20 +308,59 @@
 
         function getCommunityFromComponents(components) {
             if (!components) return null;
-            let neighborhood = null, sublocality = null, colloquial = null, sublocality1 = null, route = null, political = null;
+            console.log('All address components:', (components || []).map(c => ({ name: c.long_name, types: c.types })));
+            let candidates = {
+                neighborhood: null,
+                sublocality1: null,
+                sublocality: null,
+                political: null,
+                colloquial: null
+            };
             components.forEach(component => {
                 const types = component.types || [];
-                if (types.includes('neighborhood')) neighborhood = component.long_name;
-                if (types.includes('sublocality_level_1')) sublocality1 = component.long_name;
-                if (types.includes('sublocality')) sublocality = component.long_name;
-                if (types.includes('colloquial_area')) colloquial = component.long_name;
-                if (types.includes('route')) route = component.long_name;
-                if (types.includes('political') && !types.includes('locality')) political = component.long_name;
+                const name = component.long_name;
+                const isTooGeneric = types.some(t =>
+                    t === 'country' ||
+                    t === 'administrative_area_level_1' ||
+                    t === 'administrative_area_level_2' ||
+                    t === 'locality' ||
+                    t === 'postal_code'
+                );
+                if (isTooGeneric) {
+                    console.log('Skipping too generic:', name, types);
+                    return;
+                }
+                if (types.includes('neighborhood')) {
+                    candidates.neighborhood = name;
+                    console.log('Found neighborhood:', name);
+                }
+                if (types.includes('sublocality_level_1')) {
+                    candidates.sublocality1 = name;
+                    console.log('Found sublocality_level_1:', name);
+                }
+                if (types.includes('sublocality')) {
+                    candidates.sublocality = name;
+                    console.log('Found sublocality:', name);
+                }
+                if (types.includes('colloquial_area')) {
+                    candidates.colloquial = name;
+                    console.log('Found colloquial_area:', name);
+                }
+                if (types.includes('political') && !types.includes('locality')) {
+                    candidates.political = name;
+                    console.log('Found political:', name);
+                }
             });
-            const candidates = [neighborhood, sublocality1, sublocality, political, colloquial];
-            for (const c of candidates) {
-                if (c && !isGenericLocation(c)) return c;
+            console.log('All candidates:', candidates);
+            const priority = ['neighborhood', 'sublocality1', 'sublocality', 'colloquial', 'political'];
+            for (const key of priority) {
+                const candidate = candidates[key];
+                if (candidate && !isGenericLocation(candidate)) {
+                    console.log(`Selected ${key}:`, candidate);
+                    return candidate;
+                }
             }
+            console.log('No valid community found in components');
             return null;
         }
 
@@ -334,13 +369,27 @@
             const normalized = normalizeKey(name);
             const generic = [
                 'CALGARY',
-                'NORTH EAST','NORTHEAST','NE','NORTHEAST CALGARY',
-                'NORTH WEST','NORTHWEST','NW','NORTHWEST CALGARY',
-                'SOUTH EAST','SOUTHEAST','SE','SOUTHEAST CALGARY',
-                'SOUTH WEST','SOUTHWEST','SW','SOUTHWEST CALGARY',
-                'DOWNTOWN','INNER CITY','DOWNTOWN CALGARY'
+                'NORTH EAST','NORTHEAST','NE',
+                'NORTH WEST','NORTHWEST','NW',
+                'SOUTH EAST','SOUTHEAST','SE',
+                'SOUTH WEST','SOUTHWEST','SW',
+                'DOWNTOWN','INNER CITY','DOWNTOWN CALGARY',
+                'ALBERTA','AB',
+                'CANADA','CA',
+                'CITY OF CALGARY','CALGARY ALBERTA'
             ];
-            return generic.some(g => normalized === g || normalized.includes(g + ' CALGARY'));
+            if (generic.includes(normalized)) {
+                console.log('Filtered out generic location:', name);
+                return true;
+            }
+            if (normalized.endsWith(' CALGARY')) {
+                const withoutCalgary = normalized.replace(/ CALGARY$/, '');
+                if (generic.includes(withoutCalgary)) {
+                    console.log('Filtered out generic location (ends with CALGARY):', name);
+                    return true;
+                }
+            }
+            return false;
         }
 
         function findPartialCommunityMatch(searchKey) {
@@ -500,23 +549,44 @@
                 .replace(/\bSOUTH\s*WEST\b/g, 'SW');
         }
 
-        function normalizeAddress(value) {
-            return (value || '')
-                .toUpperCase().trim()
-                .replace(/\./g, '')
-                .replace(/\s+/g, ' ')
+        function normalizeAddressVariations(value) {
+            const base = (value || '')
+                .toUpperCase()
+                .trim()
                 .replace(/,\s*CANADA$/i, '')
                 .replace(/,\s*ALBERTA$/i, '')
                 .replace(/,\s*AB$/i, '')
                 .replace(/,\s*CALGARY$/i, '')
-                .replace(/\bNORTH\s*EAST\b/g, 'NE')
-                .replace(/\bNORTH\s*WEST\b/g, 'NW')
-                .replace(/\bSOUTH\s*EAST\b/g, 'SE')
-                .replace(/\bSOUTH\s*WEST\b/g, 'SW')
+                .replace(/\./g, '')
+                .replace(/\s+/g, ' ')
+                .replace(/\bNORTH[\s-]?EAST\b/g, 'NE')
+                .replace(/\bNORTH[\s-]?WEST\b/g, 'NW')
+                .replace(/\bSOUTH[\s-]?EAST\b/g, 'SE')
+                .replace(/\bSOUTH[\s-]?WEST\b/g, 'SW');
+            const abbreviated = base
+                .replace(/\bSTREET\b/g, 'ST')
+                .replace(/\bAVENUE\b/g, 'AVE')
+                .replace(/\bROAD\b/g, 'RD')
+                .replace(/\bDRIVE\b/g, 'DR');
+            const full = base
                 .replace(/\bST\b/g, 'STREET')
                 .replace(/\bAVE\b/g, 'AVENUE')
                 .replace(/\bRD\b/g, 'ROAD')
                 .replace(/\bDR\b/g, 'DRIVE');
+            return Array.from(new Set([base, abbreviated, full]));
+        }
+
+        function lookupInDataset(address) {
+            if (!addressIndexLoaded) return null;
+            const variations = normalizeAddressVariations(address);
+            console.log('Trying address variations:', variations);
+            for (const variant of variations) {
+                if (addressIndex[variant]) {
+                    console.log('Found match with variation:', variant, '→', addressIndex[variant]);
+                    return addressIndex[variant];
+                }
+            }
+            return null;
         }
 
         function detectAddressJsonKeys(sample) {
