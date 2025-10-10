@@ -54,6 +54,7 @@
         .status-loading { background: #fef3c7; color: #92400e; }
         .status-ready { background: #d1fae5; color: #065f46; }
         .status-error { background: #fee2e2; color: #991b1b; }
+        .debug-info { background: #f3f4f6; padding: 12px; border-radius: 8px; font-size: 0.85rem; color: #666; margin-top: 10px; font-family: monospace; }
         @keyframes slideIn { from { opacity: 0; transform: translateX(-20px); } to { opacity: 1; transform: translateX(0); } }
         @keyframes slideInRight { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
         @keyframes scaleIn { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
@@ -77,6 +78,7 @@
             <div class="info-note">
                 <div id="statusBadge" class="status-badge status-loading">⏳ Loading address database...</div>
                 <div>Enter your address to find your Calgary ward.</div>
+                <div id="debugInfo" class="debug-info" style="display:none;"></div>
             </div>
 
             <div class="search-section">
@@ -97,12 +99,12 @@
     </div>
 
     <script>
-        // Supabase Storage URL for address data
+        // ONLY public Supabase Storage - NO API calls, NO authentication
         const SUPABASE_DATA_URL = 'https://ajgqyygtstihrwjovhes.supabase.co/storage/v1/object/public/YYC%20addresses/filtered_property_data.json';
 
         // State
         let addressData = [];
-        let addressIndex = new Map(); // For fast lookup
+        let addressIndex = new Map();
         let wardIndex = { community: {} };
         let trackerCandidates = null;
         let debounceTimer;
@@ -111,9 +113,14 @@
         const searchBtn = document.getElementById('searchBtn');
         const dropdown = document.getElementById('autocompleteDropdown');
         const statusBadge = document.getElementById('statusBadge');
+        const debugInfo = document.getElementById('debugInfo');
 
         // Initialize
         async function init() {
+            console.log('=== Calgary Voter Guide Initializing ===');
+            console.log('This tool uses NO authentication');
+            console.log('Data source:', SUPABASE_DATA_URL);
+            
             await Promise.all([
                 loadAddressData(),
                 loadWardCommunities(),
@@ -126,28 +133,46 @@
             statusBadge.textContent = text;
         }
 
-        // Load address data from Supabase Storage
+        function showDebug(message) {
+            debugInfo.style.display = 'block';
+            debugInfo.textContent = message;
+            console.log('DEBUG:', message);
+        }
+
+        // Load address data from Supabase Storage (PUBLIC - no auth needed)
         async function loadAddressData() {
             try {
                 updateStatus('loading', '⏳ Loading Calgary addresses...');
-                console.log('Fetching address data from Supabase...');
+                showDebug('Fetching from public storage...');
+                console.log('Fetching:', SUPABASE_DATA_URL);
                 
                 const response = await fetch(SUPABASE_DATA_URL, {
-                    cache: 'force-cache'
+                    method: 'GET',
+                    mode: 'cors',
+                    cache: 'default'
                 });
                 
+                console.log('Response status:', response.status);
+                console.log('Response headers:', Object.fromEntries([...response.headers.entries()]));
+                
                 if (!response.ok) {
-                    throw new Error(`Failed to load: ${response.status}`);
+                    const errorText = await response.text();
+                    console.error('Fetch failed:', response.status, errorText);
+                    throw new Error(`HTTP ${response.status}: ${errorText.substring(0, 200)}`);
                 }
 
                 const rawText = await response.text();
+                console.log('Received data length:', rawText.length, 'bytes');
+                showDebug(`Downloaded ${(rawText.length / 1024).toFixed(0)}KB of address data`);
                 
-                // Try parsing as regular JSON first
+                // Parse JSON
                 let data;
                 try {
                     data = JSON.parse(rawText);
-                } catch {
-                    // If that fails, try NDJSON (one JSON object per line)
+                    console.log('Parsed as JSON');
+                } catch (e) {
+                    console.log('Not standard JSON, trying NDJSON...');
+                    // Try NDJSON
                     data = rawText.split('\n')
                         .filter(line => line.trim())
                         .map(line => {
@@ -160,15 +185,25 @@
                         .filter(Boolean);
                 }
 
-                // Handle different data structures
+                // Extract records
                 addressData = Array.isArray(data) ? data : (data.records || []);
+                console.log('Total records:', addressData.length);
+                showDebug(`Loaded ${addressData.length} address records`);
                 
-                console.log(`Loaded ${addressData.length} addresses`);
+                if (addressData.length === 0) {
+                    throw new Error('No address data found in file');
+                }
+
+                // Sample first record to understand structure
+                if (addressData.length > 0) {
+                    console.log('Sample record:', JSON.stringify(addressData[0], null, 2));
+                }
                 
-                // Build index for fast lookup
+                // Build search index
+                let indexed = 0;
                 addressData.forEach(record => {
-                    const address = getField(record, ['address', 'Address', 'ADDRESS', 'full_address', 'FULL_ADDRESS', 'street_address']);
-                    const community = getField(record, ['community', 'Community', 'COMMUNITY', 'NEIGHBOURHOOD', 'Neighbourhood']);
+                    const address = getField(record, ['address', 'Address', 'ADDRESS', 'full_address', 'FULL_ADDRESS', 'street_address', 'StreetAddress']);
+                    const community = getField(record, ['community', 'Community', 'COMMUNITY', 'NEIGHBOURHOOD', 'Neighbourhood', 'NEIGHBORHOOD']);
                     
                     if (address && community) {
                         const normalizedAddr = normalizeAddress(address);
@@ -177,25 +212,36 @@
                             community: community,
                             original: record
                         });
+                        indexed++;
                     }
                 });
 
-                console.log(`Indexed ${addressIndex.size} addresses`);
+                console.log('Indexed addresses:', indexed);
+                showDebug(`Indexed ${indexed} searchable addresses`);
+                
+                if (indexed === 0) {
+                    throw new Error('Could not index any addresses - check field names');
+                }
+
                 updateStatus('ready', '✅ Ready');
+                debugInfo.style.display = 'none';
                 addressInput.disabled = false;
                 searchBtn.disabled = false;
                 
             } catch (error) {
-                console.error('Failed to load address data:', error);
-                updateStatus('error', '❌ Failed to load address data');
-                showAlert('Failed to load address database. Some features may not work.', 'error');
+                console.error('FATAL ERROR loading address data:', error);
+                updateStatus('error', '❌ Failed to load');
+                showDebug(`Error: ${error.message}`);
+                showAlert(`Failed to load address database: ${error.message}`, 'error');
             }
         }
 
         // Helper to get field with multiple possible names
         function getField(obj, fieldNames) {
             for (const name of fieldNames) {
-                if (obj[name]) return String(obj[name]).trim();
+                if (obj[name] !== undefined && obj[name] !== null) {
+                    return String(obj[name]).trim();
+                }
             }
             return '';
         }
@@ -218,7 +264,7 @@
                 .trim();
         }
 
-        // Address autocomplete (local search)
+        // Address autocomplete (local search - no API calls)
         addressInput.addEventListener('input', function(e) {
             clearTimeout(debounceTimer);
             const value = e.target.value.trim();
@@ -237,10 +283,11 @@
                 for (const [normalizedAddr, data] of addressIndex.entries()) {
                     if (normalizedAddr.includes(searchTerm)) {
                         matches.push(data);
-                        if (matches.length >= 10) break; // Limit to 10 results
+                        if (matches.length >= 10) break;
                     }
                 }
 
+                console.log('Autocomplete matches:', matches.length);
                 displaySuggestions(matches);
             }, 200);
         });
@@ -280,23 +327,24 @@
                 return;
             }
 
-            // Try to find in address index
+            // Find in address index
             const normalized = normalizeAddress(address);
             const match = addressIndex.get(normalized);
             
             if (match) {
                 lookupByCommunity(match.community, match.address);
-            } else {
-                // Try fuzzy search
-                for (const [normalizedAddr, data] of addressIndex.entries()) {
-                    if (normalizedAddr.includes(normalized) || normalized.includes(normalizedAddr)) {
-                        lookupByCommunity(data.community, data.address);
-                        return;
-                    }
-                }
-                
-                showAlert('Address not found in database. Please select from suggestions.', 'error');
+                return;
             }
+
+            // Fuzzy search
+            for (const [normalizedAddr, data] of addressIndex.entries()) {
+                if (normalizedAddr.includes(normalized) || normalized.includes(normalizedAddr.substring(0, Math.min(normalized.length, normalizedAddr.length)))) {
+                    lookupByCommunity(data.community, data.address);
+                    return;
+                }
+            }
+            
+            showAlert('Address not found. Please select from autocomplete suggestions.', 'error');
         }
 
         function lookupByCommunity(community, address = null) {
@@ -305,12 +353,12 @@
             
             if (ward) {
                 displayResults(ward, { 
-                    source: 'Address database match', 
+                    source: 'Address database', 
                     community: community,
                     address: address 
                 });
             } else {
-                showAlert(`Community "${community}" not found in ward mapping`, 'error');
+                showAlert(`Community "${community}" not mapped to a ward yet`, 'error');
             }
         }
 
@@ -361,7 +409,7 @@
             return html;
         }
 
-        // Load ward communities mapping
+        // Load ward communities mapping (local file)
         async function loadWardCommunities() {
             try {
                 const res = await fetch('assets/data/calgary/ward-communities.json');
@@ -372,14 +420,14 @@
                             wardIndex.community[normalizeKey(comm)] = ward;
                         });
                     });
-                    console.log('Ward mapping loaded:', Object.keys(wardIndex.community).length);
+                    console.log('Ward mapping loaded:', Object.keys(wardIndex.community).length, 'communities');
                 }
             } catch (e) {
                 console.error('Failed to load ward mapping:', e);
             }
         }
 
-        // Load candidates
+        // Load candidates (local file)
         async function loadTrackerCandidates() {
             try {
                 const res = await fetch('calgary-2025.html');
@@ -439,7 +487,8 @@
             }
         });
 
-        // Initialize on load
+        // Initialize
+        console.log('Starting initialization...');
         init();
     </script>
 </body>
