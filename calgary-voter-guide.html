@@ -289,6 +289,32 @@
             }
         }
 
+        function parseJsonTolerant(raw) {
+            // Trim, strip BOM and common XSSI guards, then try parse.
+            let s = String(raw || '').trim().replace(/^\uFEFF/, '').replace(/^\)\]\}',?\s*/,'');
+            try {
+                return JSON.parse(s);
+            } catch (e) {
+                // Attempt to extract the first valid JSON array or object region
+                const tryExtract = (text) => {
+                    const arrStart = text.indexOf('[');
+                    const arrEnd = text.lastIndexOf(']');
+                    if (arrStart !== -1 && arrEnd > arrStart) {
+                        const candidate = text.slice(arrStart, arrEnd + 1);
+                        try { return JSON.parse(candidate); } catch (_) {}
+                    }
+                    const objStart = text.indexOf('{');
+                    const objEnd = text.lastIndexOf('}');
+                    if (objStart !== -1 && objEnd > objStart) {
+                        const candidate = text.slice(objStart, objEnd + 1);
+                        try { return JSON.parse(candidate); } catch (_) {}
+                    }
+                    throw e;
+                };
+                return tryExtract(s);
+            }
+        }
+
         function safeHref(h) {
             try {
                 const u = new URL(h, location.origin);
@@ -498,7 +524,8 @@
                     return;
                 }
 
-                const json = await res.json();
+                const rawText = await res.text();
+                const json = parseJsonTolerant(rawText);
                 const rows = Array.isArray(json) ? json : (json && (json.rows || json.data)) || [];
                 
                 if (!Array.isArray(rows) || rows.length === 0) {
