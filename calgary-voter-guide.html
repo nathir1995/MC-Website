@@ -114,6 +114,7 @@
         }
         
         const SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY;
+        const hasAnon = !!(SUPABASE_ANON_KEY && SUPABASE_ANON_KEY !== 'YOUR_SUPABASE_ANON_KEY_HERE');
 
         // Central configuration and feature flags
         const CONFIG = {
@@ -288,6 +289,14 @@
             }
         }
 
+        function safeHref(h) {
+            try {
+                const u = new URL(h, location.origin);
+                if (u.protocol === 'http:' || u.protocol === 'https:') return u.href;
+            } catch (e) {}
+            return null;
+        }
+
         async function loadGoogleMapsIfNeeded(apiKey) {
             if (googleSdkLoaded && window.google && window.google.maps) return true;
             if (!apiKey) return false;
@@ -331,11 +340,13 @@
         }
 
         async function initializeGeocoding() {
-            // Prefer Edge Functions when configured
-            if (CONFIG.supabase.anonKey && CONFIG.supabase.anonKey !== 'YOUR_SUPABASE_ANON_KEY_HERE') {
+            // Prefer Edge Functions only when anon key is configured
+            if (hasAnon) {
                 geocoder = geocoderProxy;
                 autocompleteService = autocompleteProxy;
                 currentProvider = 'edge';
+            } else {
+                showAlert('Supabase anon key missing — online lookup disabled. Please set window.SUPABASE_ANON_KEY or include config.js', 'warning');
             }
             // If not configured or unavailable, try Google fallback lazily
             if (!geocoder && CONFIG.google.apiKey) {
@@ -1019,8 +1030,9 @@
                 <h3><span class="section-icon">${icon}</span>${title}</h3>
                 <div class="candidate-list">
                   ${list.length ? list.map(c => {
-                    const name = c.url ? 
-                        `<a href="${c.url}" target="_blank" rel="noopener" class="candidate-name">${c.name}</a>` : 
+                    const safe = c.url ? safeHref(c.url) : null;
+                    const name = safe ?
+                        `<a href="${safe}" target="_blank" rel="noopener" class="candidate-name">${c.name}</a>` : 
                         `<span class="candidate-name">${c.name}</span>`;
                     return `<div class="candidate-card">${name}</div>`;
                   }).join('') : '<div class="alert alert-info">No entries</div>'}
