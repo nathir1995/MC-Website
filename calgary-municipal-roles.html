@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta content="width=device-width, initial-scale=1.0" name="viewport">
+  <title>Municipal Roles Explained - Canadian Muslim Census</title>
+  <meta name="description" content="Understanding the duties of mayors, councillors, and school trustees in Calgary's municipal election.">
+
+  <!-- Fonts -->
+  <link href="https://fonts.googleapis.com" rel="preconnect">
+  <link href="https://fonts.gstatic.com" rel="preconnect" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+  <!-- Bootstrap Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+
+  <style>
+    :root {
+      --color-primary-50: #eff6ff;
+      --color-primary-100: #dbeafe;
+      --color-primary-500: #3b82f6;
+      --color-primary-600: #2563eb;
+      --color-primary-700: #1d4ed8;
+      --color-gray-50: #f9fafb;
+      --color-gray-100: #f3f4f6;
+      --color-gray-200: #e5e7eb;
+      --color-gray-600: #4b5563;
+      --font-family-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+      font-family: var(--font-family-sans); 
+      background: var(--color-gray-50); 
+      color: #111827;
+      line-height: 1.6;
+    }
+
+    /* Header */
+    .header { 
+      background: white; 
+      border-bottom: 1px solid var(--color-gray-200); 
+      position: sticky; 
+      top: 0; 
+      z-index: 1000;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    .header-content { 
+      max-width: 1400px; 
+      margin: 0 auto; 
+      padding: 0 1.5rem; 
+      display: flex; 
+      justify-content: space-between; 
+      align-items: center; 
+      min-height: 80px;
+    }
+    .logo { 
+      display: flex; 
+      align-items: center; 
+      gap: 0.75rem; 
+      text-decoration: none; 
+      color: #111827;
+    }
+    .logo-icon { 
+      width: 40px; 
+      height: 40px; 
+      background: linear-gradient(135deg, var(--color-primary-500), var(--color-primary-700)); 
+      border-radius: 12px; 
+      display: flex; 
+      align-items: center; 
+      justify-content: center; 
+      color: white; 
+      font-weight: 700;
+      font-size: 20px;
+    }
+    .logo-text { font-weight: 800; font-size: 18px; }
+
+    /* Language Selector */
+    .lang-selector { 
+      display: flex; 
+      gap: 8px; 
+      align-items: center;
+    }
+    .lang-selector select {
+      padding: 8px 12px;
+      border: 2px solid var(--color-gray-200);
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      background: white;
+    }
+    .lang-selector select:focus {
+      outline: none;
+      border-color: var(--color-primary-500);
+    }
+
+    /* Main Content */
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 40px 20px;
+    }
+
+    .page-header {
+      background: linear-gradient(135deg, var(--color-primary-50), #ffffff);
+      padding: 40px;
+      border-radius: 16px;
+      margin-bottom: 40px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      border: 1px solid var(--color-gray-200);
+    }
+
+    .page-title {
+      font-size: 36px;
+      font-weight: 800;
+      color: #111827;
+      margin-bottom: 12px;
+    }
+
+    .page-subtitle {
+      font-size: 18px;
+      color: var(--color-gray-600);
+    }
+
+    .role-section {
+      background: white;
+      padding: 32px;
+      border-radius: 12px;
+      margin-bottom: 24px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      border-left: 4px solid var(--color-primary-500);
+    }
+
+    .role-section.mayor { border-left-color: #9333ea; }
+    .role-section.councillor { border-left-color: #3b82f6; }
+    .role-section.trustee { border-left-color: #10b981; }
+
+    .role-title {
+      font-size: 28px;
+      font-weight: 800;
+      color: #111827;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .role-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+    }
+
+    .role-icon.mayor { background: #faf5ff; }
+    .role-icon.councillor { background: #eff6ff; }
+    .role-icon.trustee { background: #f0fdf4; }
+
+    .role-intro {
+      font-size: 16px;
+      color: #374151;
+      margin-bottom: 20px;
+      font-weight: 500;
+    }
+
+    .duties-list {
+      list-style: none;
+      padding: 0;
+    }
+
+    .duties-list li {
+      padding: 16px;
+      margin-bottom: 12px;
+      background: var(--color-gray-50);
+      border-radius: 8px;
+      border-left: 3px solid var(--color-primary-500);
+    }
+
+    .duty-title {
+      font-weight: 700;
+      color: #111827;
+      font-size: 16px;
+      margin-bottom: 4px;
+    }
+
+    .duty-description {
+      color: var(--color-gray-600);
+      font-size: 14px;
+    }
+
+    .closing-note {
+      background: var(--color-primary-50);
+      padding: 24px;
+      border-radius: 12px;
+      margin-top: 32px;
+      border: 1px solid var(--color-primary-100);
+      text-align: center;
+      font-size: 16px;
+      color: #1e40af;
+      font-weight: 500;
+    }
+
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: white;
+      color: var(--color-primary-600);
+      padding: 12px 24px;
+      border-radius: 8px;
+      text-decoration: none;
+      font-weight: 600;
+      border: 2px solid var(--color-primary-200);
+      margin-bottom: 24px;
+      transition: all 0.2s;
+    }
+
+    .back-link:hover {
+      background: var(--color-primary-50);
+      border-color: var(--color-primary-500);
+    }
+
+    /* Footer */
+    .footer { 
+      background: #111827; 
+      color: white; 
+      padding: 2rem 0; 
+      margin-top: 4rem;
+    }
+    .footer-content { 
+      max-width: 1400px; 
+      margin: 0 auto; 
+      padding: 0 1.5rem; 
+      text-align: center;
+    }
+
+    @media (max-width: 768px) {
+      .page-title { font-size: 28px; }
+      .role-title { font-size: 24px; }
+      .page-header { padding: 24px; }
+      .role-section { padding: 20px; }
+    }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <header class="header">
+    <div class="header-content">
+      <a href="index.html" class="logo">
+        <div class="logo-icon">📊</div>
+        <span class="logo-text">Canadian Muslim Census</span>
+      </a>
+      <div class="lang-selector">
+        <span style="font-size: 20px;">🌍</span>
+        <select id="langSelect">
+          <option value="en">English</option>
+          <option value="fr">Français</option>
+          <option value="ar">العربية (Arabic)</option>
+          <option value="ur">اردو (Urdu)</option>
+          <option value="hi">हिन्दी (Hindi)</option>
+          <option value="pa">ਪੰਜਾਬੀ (Punjabi)</option>
+          <option value="fa">فارسی (Farsi)</option>
+          <option value="tr">Türkçe (Turkish)</option>
+          <option value="ps">پښتو (Pashto)</option>
+          <option value="dari">دری (Dari)</option>
+          <option value="sw">Kiswahili (Swahili)</option>
+        </select>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <a href="calgary-2025.html" class="back-link">
+      <i class="bi bi-arrow-left"></i>
+      Back to Election Tracker
+    </a>
+
+    <div class="page-header">
+      <h1 class="page-title">Understanding Municipal Roles</h1>
+      <p class="page-subtitle">Learn about the duties of mayors, councillors, and school trustees in Calgary's municipal government</p>
+    </div>
+
+    <div class="role-section mayor">
+      <h2 class="role-title">
+        <span class="role-icon mayor">👔</span>
+        Mayor
+      </h2>
+      <p class="role-intro">The mayor serves as the chief elected official and leader of a municipality.</p>
+      <ul class="duties-list">
+        <li>
+          <div class="duty-title">Leading council</div>
+          <div class="duty-description">Chairing council meetings and helping set the agenda</div>
+        </li>
+        <li>
+          <div class="duty-title">Representing the municipality</div>
+          <div class="duty-description">Acting as the primary spokesperson and ceremonial head</div>
+        </li>
+        <li>
+          <div class="duty-title">Strategic leadership</div>
+          <div class="duty-description">Providing direction on priorities and long-term planning</div>
+        </li>
+        <li>
+          <div class="duty-title">Advocating</div>
+          <div class="duty-description">Representing municipal interests to other levels of government</div>
+        </li>
+        <li>
+          <div class="duty-title">Voting member</div>
+          <div class="duty-description">Participating in council votes (though in some jurisdictions they only vote to break ties)</div>
+        </li>
+        <li>
+          <div class="duty-title">Emergency leadership</div>
+          <div class="duty-description">Taking charge during local emergencies</div>
+        </li>
+      </ul>
+    </div>
+
+    <div class="role-section councillor">
+      <h2 class="role-title">
+        <span class="role-icon councillor">🏛️</span>
+        Councillors
+      </h2>
+      <p class="role-intro">Councillors represent specific wards or the municipality at large.</p>
+      <ul class="duties-list">
+        <li>
+          <div class="duty-title">Making decisions</div>
+          <div class="duty-description">Voting on bylaws, budgets, policies, and municipal services</div>
+        </li>
+        <li>
+          <div class="duty-title">Representing constituents</div>
+          <div class="duty-description">Listening to and advocating for residents' concerns</div>
+        </li>
+        <li>
+          <div class="duty-title">Overseeing administration</div>
+          <div class="duty-description">Monitoring how city staff implement council decisions</div>
+        </li>
+        <li>
+          <div class="duty-title">Setting tax rates</div>
+          <div class="duty-description">Approving the municipal budget and property tax levels</div>
+        </li>
+        <li>
+          <div class="duty-title">Land use decisions</div>
+          <div class="duty-description">Voting on development permits and zoning changes</div>
+        </li>
+        <li>
+          <div class="duty-title">Attending meetings</div>
+          <div class="duty-description">Participating in council and committee meetings</div>
+        </li>
+      </ul>
+    </div>
+
+    <div class="role-section trustee">
+      <h2 class="role-title">
+        <span class="role-icon trustee">🎓</span>
+        School Trustees
+      </h2>
+      <p class="role-intro">School trustees govern local school boards.</p>
+      <ul class="duties-list">
+        <li>
+          <div class="duty-title">Setting educational direction</div>
+          <div class="duty-description">Establishing priorities and policies for schools</div>
+        </li>
+        <li>
+          <div class="duty-title">Budget approval</div>
+          <div class="duty-description">Allocating funding across schools and programs</div>
+        </li>
+        <li>
+          <div class="duty-title">Hiring senior staff</div>
+          <div class="duty-description">Appointing and evaluating the superintendent</div>
+        </li>
+        <li>
+          <div class="duty-title">Advocacy</div>
+          <div class="duty-description">Representing the school board to government and community</div>
+        </li>
+        <li>
+          <div class="duty-title">Ensuring accountability</div>
+          <div class="duty-description">Monitoring student achievement and system performance</div>
+        </li>
+        <li>
+          <div class="duty-title">Policy development</div>
+          <div class="duty-description">Creating rules on everything from curriculum to facilities</div>
+        </li>
+      </ul>
+    </div>
+
+    <div class="closing-note">
+      All three roles involve public service, community engagement, and making decisions that affect residents' daily lives.
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="footer-content">
+      <p>&copy; 2025 Canadian Muslim Census. All rights reserved.</p>
+      <p style="margin-top: 8px; color: #9ca3af;">Calgary, Alberta, Canada | nhaimoun@gmail.com</p>
+    </div>
+  </footer>
+
+  <!-- Google Translate (hidden) -->
+  <div id="google_translate_element" style="display:none;"></div>
+
+  <script>
+    function googleTranslateElementInit() {
+      if (window.google && window.google.translate) {
+        new google.translate.TranslateElement({
+          pageLanguage: 'en',
+          includedLanguages: 'en,fr,ar,ur,hi,pa,fa,tr,ps,sw',
+          autoDisplay: false
+        }, 'google_translate_element');
+      }
+    }
+
+    function GTranslateFireEvent(element, event) {
+      try {
+        if (document.createEvent) {
+          var evt = document.createEvent('HTMLEvents');
+          evt.initEvent(event, true, true);
+          element.dispatchEvent(evt);
+        } else if (document.createEventObject) {
+          var evt = document.createEventObject();
+          element.fireEvent('on' + event, evt);
+        }
+      } catch (e) {}
+    }
+
+    function doGTranslate(langPair) {
+      if (langPair.value) langPair = langPair.value;
+      var lang = langPair.split('|')[1];
+      var select = document.querySelector('select.goog-te-combo');
+      if (!select) {
+        setTimeout(function(){ doGTranslate(langPair); }, 500);
+        return;
+      }
+      select.value = lang;
+      GTranslateFireEvent(select, 'change');
+    }
+
+    function setLanguage(code) {
+      var langMap = { 
+        'dari': 'fa',
+        'ps': 'ps'
+      };
+      var targetLang = langMap[code] || code || 'en';
+      doGTranslate('en|' + targetLang);
+    }
+
+    // Language selector event
+    document.getElementById('langSelect').addEventListener('change', function(e) {
+      setLanguage(e.target.value);
+    });
+
+    // Initialize on load
+    window.addEventListener('load', function() {
+      setTimeout(googleTranslateElementInit, 100);
+    });
+  </script>
+
+  <script src="https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
+</body>
+</html>
